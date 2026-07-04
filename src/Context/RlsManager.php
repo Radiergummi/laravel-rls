@@ -3,13 +3,15 @@
 namespace Radiergummi\Rls\Context;
 
 use Closure;
+use Illuminate\Log\Context\Repository;
 
 class RlsManager
 {
-    /** @var list<RlsContext> */
-    private array $stack = [];
+    private const KEY = 'rls';
 
     private ?Closure $sync = null;
+
+    public function __construct(private readonly Repository $context) {}
 
     public function setSyncCallback(?Closure $sync): void
     {
@@ -18,24 +20,28 @@ class RlsManager
 
     public function push(RlsContext $context): void
     {
-        $this->stack[] = $context;
+        $this->context->push(self::KEY, $context);
         $this->afterChange();
     }
 
     public function pop(): void
     {
-        array_pop($this->stack);
+        if ($this->hasContext()) {
+            $this->context->pop(self::KEY);
+        }
         $this->afterChange();
     }
 
     public function current(): ?RlsContext
     {
-        return $this->stack === [] ? null : $this->stack[count($this->stack) - 1];
+        $stack = $this->stack();
+
+        return $stack === [] ? null : $stack[array_key_last($stack)];
     }
 
     public function hasContext(): bool
     {
-        return $this->stack !== [];
+        return $this->stack() !== [];
     }
 
     public function context(): array
@@ -72,8 +78,38 @@ class RlsManager
 
     public function forget(): void
     {
-        $this->stack = [];
+        $this->context->forget(self::KEY);
         $this->afterChange();
+    }
+
+    /**
+     * Strip bypass contexts before the context is serialized into a queued
+     * job, so a job dispatched inside a bypass scope never inherits bypass.
+     */
+    public static function stripBypassOnDehydrate(Repository $context): void
+    {
+        $stack = $context->get(self::KEY, []);
+
+        if ($stack === []) {
+            return;
+        }
+
+        $filtered = array_values(array_filter(
+            $stack,
+            fn (RlsContext $c) => ! $c->isBypass(),
+        ));
+
+        if ($filtered === []) {
+            $context->forget(self::KEY);
+        } else {
+            $context->add(self::KEY, $filtered);
+        }
+    }
+
+    /** @return list<RlsContext> */
+    private function stack(): array
+    {
+        return $this->context->get(self::KEY, []);
     }
 
     private function enter(RlsContext $context, ?Closure $callback): mixed

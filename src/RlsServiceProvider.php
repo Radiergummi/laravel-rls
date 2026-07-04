@@ -13,7 +13,7 @@ class RlsServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/rls.php', 'rls');
 
-        $this->app->singleton('rls', fn () => new RlsManager());
+        $this->app->singleton('rls', fn ($app) => new RlsManager($app->make(\Illuminate\Log\Context\Repository::class)));
         $this->app->alias('rls', RlsManager::class);
 
         Connection::resolverFor('pgsql', function ($pdo, $database, $prefix, $config) {
@@ -36,5 +36,9 @@ class RlsServiceProvider extends ServiceProvider
         });
 
         \Radiergummi\Rls\Schema\RlsSchemaMacros::register();
+
+        \Illuminate\Support\Facades\Context::dehydrating(
+            fn ($context) => RlsManager::stripBypassOnDehydrate($context),
+        );
     }
 }
