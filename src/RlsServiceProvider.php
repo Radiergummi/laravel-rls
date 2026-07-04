@@ -17,7 +17,10 @@ class RlsServiceProvider extends ServiceProvider
         $this->app->alias('rls', RlsManager::class);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([\Radiergummi\Rls\Console\CheckCommand::class]);
+            $this->commands([
+                \Radiergummi\Rls\Console\CheckCommand::class,
+                \Radiergummi\Rls\Console\AuditCommand::class,
+            ]);
         }
 
         Connection::resolverFor('pgsql', function ($pdo, $database, $prefix, $config) {
