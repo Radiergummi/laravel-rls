@@ -21,7 +21,7 @@ class RlsSchemaMacros
             $this->addCommand('rlsRaw', ['sql' => "alter table \"{$table}\" force row level security"]);
         });
 
-        Blueprint::macro('scopedBy', function (string $column, ?string $dimension = null, string $type = 'uuid'): void {
+        Blueprint::macro('scopedBy', function (string $column, ?string $dimension = null, string $type = 'uuid'): ScopedByDefinition {
             /** @var Blueprint $this */
             $table = $this->getTable();
             $dimension ??= $column;
@@ -47,6 +47,10 @@ class RlsSchemaMacros
                 "create policy \"{$table}_{$dimension}_isolation\" on \"{$table}\" " .
                 "as restrictive for all using ({$predicate}) with check ({$predicate})",
             ]);
+
+            $addRaw = fn (string $sql) => $this->addCommand('rlsRaw', ['sql' => $sql]);
+
+            return new ScopedByDefinition($addRaw, $table, $column, $dimension, $type);
         });
 
         PostgresGrammar::macro('compileRlsRaw', function ($blueprint, $command) {

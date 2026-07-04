@@ -72,10 +72,11 @@ and *where* it touches the code.
   emit both the migration and a PGXN extension bundle (`.control` + version
   scripts). For superuser/self-hosted. *Design §8.* Touches: `RlsFunctions`.
 
-- [ ] **`withDefault()` column default.** `scopedBy('tenant_id')->withDefault()`
-  → `tenant_id DEFAULT rls.context('tenant_id')::uuid`. Opt-in convenience that,
-  with `WITH CHECK`, makes tenant id "impossible to get wrong." *Design §9.*
-  Touches: `RlsSchemaMacros`.
+- [x] **`withDefault()` column default.** `scopedBy('tenant_id')->withDefault()`
+  sets the scoping column's default to `rls.context('tenant_id')::uuid`, so an
+  insert that omits it is auto-filled from context. `scopedBy()` now returns a
+  fluent `ScopedByDefinition`. With `WITH CHECK`, makes the scope id "impossible
+  to get wrong." *Design §9.*
 
 - [ ] **`rls.bypass()` semantics per role model, hardened.** Confirm the bypass
   clause is emitted only in `owner` mode and is genuinely inert for the
