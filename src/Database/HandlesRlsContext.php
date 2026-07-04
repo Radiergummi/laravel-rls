@@ -121,6 +121,7 @@ trait HandlesRlsContext
     protected function shouldWrapForRls(): bool
     {
         return $this->transactionLevel() === 0
+            && config('rls.strategy', 'transaction') === 'transaction'
             && config('rls.boundary', 'wrap') === 'wrap'
             && app('rls')->hasContext();
     }
@@ -132,7 +133,12 @@ trait HandlesRlsContext
      */
     public function applyRlsContext(): void
     {
-        if ($this->transactionLevel() === 0) {
+        // Transaction strategy binds context to a transaction, so there is
+        // nothing to set until one is open. Session strategy sets a session
+        // GUC that persists without a transaction.
+        $local = config('rls.strategy', 'transaction') !== 'session';
+
+        if ($local && $this->transactionLevel() === 0) {
             return;
         }
 
@@ -140,24 +146,27 @@ trait HandlesRlsContext
         $context = app('rls')->current();
 
         // Blank any dimension keys we previously set, so popping/switching
-        // context cannot leave a stale value behind within the transaction.
+        // context cannot leave a stale value behind.
         foreach ($this->rlsAppliedKeys as $key) {
-            $this->setLocalConfig($prefix . $key, '');
+            $this->setConfig($prefix . $key, '', $local);
         }
         $this->rlsAppliedKeys = [];
 
-        $this->setLocalConfig($prefix . 'bypass', $context?->isBypass() ? 'on' : '');
+        $this->setConfig($prefix . 'bypass', $context?->isBypass() ? 'on' : '', $local);
 
         if ($context !== null && ! $context->isBypass()) {
             foreach ($context->values() as $key => $value) {
-                $this->setLocalConfig($prefix . $key, (string) $value);
+                $this->setConfig($prefix . $key, (string) $value, $local);
                 $this->rlsAppliedKeys[] = $key;
             }
         }
     }
 
-    private function setLocalConfig(string $name, string $value): void
+    private function setConfig(string $name, string $value, bool $local): void
     {
-        $this->statement('select set_config(?, ?, true)', [$name, $value]);
+        // is_local is inlined as a literal (not bound) so no boolean-binding
+        // ambiguity; name and value stay bound and injection-safe.
+        $flag = $local ? 'true' : 'false';
+        $this->statement("select set_config(?, ?, {$flag})", [$name, $value]);
     }
 }

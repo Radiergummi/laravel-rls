@@ -42,7 +42,9 @@ class RlsServiceProvider extends ServiceProvider
 
             // Capability check (not instanceof) so composed connections built
             // on other pgsql packages (e.g. tpetry) are recognised too.
-            if (method_exists($connection, 'applyRlsContext') && $connection->transactionLevel() > 0) {
+            // applyRlsContext() self-guards per strategy (no-op for the
+            // transaction strategy outside a transaction).
+            if (method_exists($connection, 'applyRlsContext')) {
                 $connection->applyRlsContext();
             }
         });
