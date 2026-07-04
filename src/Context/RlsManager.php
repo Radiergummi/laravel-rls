@@ -13,7 +13,35 @@ class RlsManager
 
     private ?Closure $bypassHandler = null;
 
+    private ?Closure $resolver = null;
+
     public function __construct(private readonly Repository $context) {}
+
+    /**
+     * Register the app's identity -> context mapping. Called from the
+     * publishable RlsServiceProvider.
+     */
+    public function resolveContextUsing(Closure $resolver): void
+    {
+        $this->resolver = $resolver;
+    }
+
+    /**
+     * Establish context from a freshly authenticated user, using the app's
+     * resolver. A no-op if no resolver is registered or it yields nothing.
+     */
+    public function establishFromUser(mixed $user): void
+    {
+        if ($this->resolver === null) {
+            return;
+        }
+
+        $context = ($this->resolver)($user);
+
+        if (is_array($context) && $context !== []) {
+            $this->push(RlsContext::make($context));
+        }
+    }
 
     public function setSyncCallback(?Closure $sync): void
     {

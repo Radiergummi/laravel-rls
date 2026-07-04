@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static mixed actingAs(array $context, ?\Closure $callback = null)
  * @method static mixed withoutRls(string $reason, \Closure $callback)
  * @method static mixed system(string $reason, \Closure $callback)
+ * @method static void resolveContextUsing(\Closure $resolver)
+ * @method static void establishFromUser(mixed $user)
  * @method static void forget()
  *
  * @see \Radiergummi\Rls\Context\RlsManager

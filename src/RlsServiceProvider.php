@@ -41,6 +41,11 @@ class RlsServiceProvider extends ServiceProvider
             fn ($context) => RlsManager::stripBypassOnDehydrate($context),
         );
 
+        $this->app['events']->listen(
+            \Illuminate\Auth\Events\Authenticated::class,
+            fn ($event) => $manager->establishFromUser($event->user),
+        );
+
         if (config('rls.role_model') === 'restricted') {
             $manager->setBypassHandler(function (string $reason, \Closure $callback) {
                 $admin = config('rls.admin_connection');
