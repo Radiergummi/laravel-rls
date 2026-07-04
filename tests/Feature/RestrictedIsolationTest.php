@@ -123,4 +123,17 @@ class RestrictedIsolationTest extends TestCase
 
         Rls::system('audit', fn () => null);
     }
+
+    public function test_restricted_role_cannot_self_escape_via_bypass_guc(): void
+    {
+        // As the restricted role, flip the owner-mode escape hatch directly and
+        // set a tenant. The restricted isolation policy has no bypass clause, so
+        // app.bypass changes nothing: only tenant A's rows remain visible.
+        DB::transaction(function () {
+            DB::statement("select set_config('app.bypass', 'on', true)");
+            DB::statement("select set_config('app.tenant_id', ?, true)", [$this->a]);
+
+            $this->assertSame(2, DB::table('demo.things')->count(), 'bypass GUC must be inert for a non-owner');
+        });
+    }
 }

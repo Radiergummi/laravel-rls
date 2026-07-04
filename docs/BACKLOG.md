@@ -78,10 +78,10 @@ and *where* it touches the code.
   fluent `ScopedByDefinition`. With `WITH CHECK`, makes the scope id "impossible
   to get wrong." *Design §9.*
 
-- [ ] **`rls.bypass()` semantics per role model, hardened.** Confirm the bypass
-  clause is emitted only in `owner` mode and is genuinely inert for the
-  restricted role. Add tests that the restricted role cannot self-escape via
-  `set_config('app.bypass', ...)`. *Design §5/§7.*
+- [x] **`rls.bypass()` semantics per role model, hardened.** Tests confirm the
+  bypass clause is emitted only in `owner` mode (present in owner DSL, absent in
+  restricted) and that a restricted role setting `app.bypass='on'` directly stays
+  confined — the bypass GUC is inert without the clause. *Design §5/§7.*
 
 - [ ] **Tenancy-package bridges (stancl / spatie).** Ship a first-class
   `resolveContextUsing(fn () => ['tenant_id' => tenant()?->getKey()])` bridge so

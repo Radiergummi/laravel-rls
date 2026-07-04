@@ -48,4 +48,15 @@ class PolicyDslTest extends TestCase
         $this->assertSame('PERMISSIVE', $policies['widgets_access']->permissive);
         $this->assertSame('RESTRICTIVE', $policies['widgets_tenant_id_isolation']->permissive);
     }
+
+    public function test_owner_mode_isolation_predicate_includes_the_bypass_clause(): void
+    {
+        $policy = DB::selectOne(
+            'select qual from pg_policies where tablename = ? and policyname = ?',
+            ['widgets', 'widgets_tenant_id_isolation'],
+        );
+
+        $this->assertNotNull($policy);
+        $this->assertStringContainsString('bypass', $policy->qual);
+    }
 }
