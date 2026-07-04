@@ -64,7 +64,11 @@ trait InteractsWithRls
 
         Rls::actingAs(['tenant_id' => $actingId], function () use ($modelClass, $foreignId) {
             try {
-                $modelClass::query()->create(['tenant_id' => $foreignId]);
+                // Run in a savepoint so the expected policy violation rolls back
+                // cleanly without aborting any surrounding transaction.
+                DB::transaction(function () use ($modelClass, $foreignId) {
+                    $modelClass::query()->create(['tenant_id' => $foreignId]);
+                });
                 $this->fail('Expected WITH CHECK to reject the cross-tenant write');
             } catch (QueryException $e) {
                 $this->assertStringContainsStringIgnoringCase('row-level security', $e->getMessage());
