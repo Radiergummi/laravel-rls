@@ -31,8 +31,10 @@ class TypedHelpersTest extends TestCase
     {
         Rls::defineContext(fn ($c) => $c->uuid('tenant_id'));
 
-        Rls::actingAs(['tenant_id' => 'accessor-tenant'], function () {
-            $this->assertSame('accessor-tenant', Rls::tenantId());
+        $uuid = '22222222-2222-2222-2222-222222222222';
+
+        Rls::actingAs(['tenant_id' => $uuid], function () use ($uuid) {
+            $this->assertSame($uuid, Rls::tenantId());
         });
     }
 

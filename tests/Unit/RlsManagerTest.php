@@ -81,4 +81,66 @@ class RlsManagerTest extends TestCase
         $this->assertSame('9', $m->get('tenant_id'));
         $this->assertSame(5, $m->get('user_id'));
     }
+
+    public function test_rejects_value_violating_declared_type(): void
+    {
+        $m = $this->manager();
+        $m->defineContext(fn ($c) => $c->uuid('tenant_id'));
+
+        $this->expectException(\Radiergummi\LaravelRls\Exceptions\InvalidContextValue::class);
+
+        $m->actingAs(['tenant_id' => 'not-a-uuid']);
+    }
+
+    public function test_accepts_value_matching_declared_type(): void
+    {
+        $m = $this->manager();
+        $m->defineContext(fn ($c) => $c->uuid('tenant_id'));
+
+        $m->actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111']);
+
+        $this->assertTrue($m->hasContext());
+    }
+
+    public function test_undeclared_dimension_is_not_validated(): void
+    {
+        $m = $this->manager();
+        $m->defineContext(fn ($c) => $c->uuid('tenant_id'));
+
+        $m->actingAs([
+            'tenant_id' => '11111111-1111-1111-1111-111111111111',
+            'user_id' => 'anything',
+        ]);
+
+        $this->assertSame('anything', $m->get('user_id'));
+    }
+
+    public function test_rejects_non_integer_for_integer_dimension(): void
+    {
+        $m = $this->manager();
+        $m->defineContext(fn ($c) => $c->integer('org_id'));
+
+        $this->expectException(\Radiergummi\LaravelRls\Exceptions\InvalidContextValue::class);
+
+        $m->actingAs(['org_id' => 'abc']);
+    }
+
+    public function test_set_also_validates(): void
+    {
+        $m = $this->manager();
+        $m->defineContext(fn ($c) => $c->uuid('tenant_id'));
+
+        $this->expectException(\Radiergummi\LaravelRls\Exceptions\InvalidContextValue::class);
+
+        $m->set('tenant_id', 'nope');
+    }
+
+    public function test_no_schema_means_no_validation(): void
+    {
+        $m = $this->manager();
+
+        $m->actingAs(['tenant_id' => 'anything-goes']);
+
+        $this->assertSame('anything-goes', $m->get('tenant_id'));
+    }
 }

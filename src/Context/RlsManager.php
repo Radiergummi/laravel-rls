@@ -93,8 +93,31 @@ class RlsManager
 
     public function push(RlsContext $context): void
     {
+        $this->validate($context->values());
         $this->context->push(self::KEY, $context);
         $this->afterChange();
+    }
+
+    /**
+     * Validate context values against the declared schema before they leave PHP.
+     * A malformed value (e.g. a non-UUID for a uuid dimension) would otherwise
+     * reach Postgres and throw on every query — a cluster-wide failure.
+     */
+    private function validate(array $values): void
+    {
+        if ($this->schema === null) {
+            return;
+        }
+
+        foreach ($values as $key => $value) {
+            if (! $this->schema->matches($key, $value)) {
+                throw \Radiergummi\LaravelRls\Exceptions\InvalidContextValue::forDimension(
+                    $key,
+                    $this->schema->dimensions()[$key],
+                    $value,
+                );
+            }
+        }
     }
 
     public function pop(): void

@@ -41,6 +41,30 @@ class ContextSchema
         return isset($this->dimensions[$name]);
     }
 
+    /**
+     * Whether the given value is a well-formed instance of the dimension's
+     * declared Postgres type. Undeclared dimensions are unconstrained.
+     */
+    public function matches(string $name, mixed $value): bool
+    {
+        $type = $this->dimensions[$name] ?? null;
+
+        if ($type === null) {
+            return true;
+        }
+
+        return match ($type) {
+            'uuid' => ($value instanceof \Stringable || is_string($value))
+                && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', (string) $value) === 1,
+            'integer', 'bigint' => is_int($value)
+                || (is_string($value) && preg_match('/^-?\d+$/', $value) === 1),
+            'boolean' => is_bool($value)
+                || in_array($value, [0, 1, '0', '1', 'true', 'false', 't', 'f'], true),
+            'text' => is_string($value) || is_int($value) || is_float($value) || $value instanceof \Stringable,
+            default => true,
+        };
+    }
+
     /** @return array<string, string> */
     public function dimensions(): array
     {
