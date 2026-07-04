@@ -25,9 +25,22 @@ class RlsServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
+                \Radiergummi\LaravelRls\Console\InstallCommand::class,
                 \Radiergummi\LaravelRls\Console\CheckCommand::class,
                 \Radiergummi\LaravelRls\Console\AuditCommand::class,
             ]);
+
+            $this->publishes([
+                __DIR__ . '/../config/rls.php' => config_path('rls.php'),
+            ], 'rls-config');
+
+            $this->publishesMigrations([
+                __DIR__ . '/../database/migrations' => database_path('migrations'),
+            ], 'rls-migrations');
+
+            $this->publishes([
+                __DIR__ . '/../stubs/rls-provider.stub' => app_path('Providers/RlsServiceProvider.php'),
+            ], 'rls-provider');
         }
     }
 

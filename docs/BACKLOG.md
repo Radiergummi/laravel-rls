@@ -58,15 +58,15 @@ and *where* it touches the code.
 
 ## P1 — Feature completeness
 
-- [ ] **Publishable app-side `RlsServiceProvider` stub.** The single app-side home
-  for `defineContext()` + `resolveContextUsing()` (Fortify/Sanctum pattern).
-  Add `rls:install` to publish config + provider + the SQL-functions migration.
-  *Design §10.*
+- [x] **Publishable app-side `RlsServiceProvider` stub.** `rls:install` publishes
+  the config, the SQL-functions migration (`publishesMigrations`), and an
+  app-side `RlsServiceProvider` stub (the single home for `defineContext()` +
+  `resolveContextUsing()`), then prints next steps. Publish groups: `rls-config`,
+  `rls-migrations`, `rls-provider`. *Design §10.*
 
-- [ ] **`rls:install` / `rls:sync` / `rls:upgrade` commands.** Install SQL helpers
-  (migration or `--extension`), regenerate typed helpers from `ContextSchema`,
-  and version-migrate `rls.*`. Only `rls:check` and `rls:audit` exist today.
-  *Design §8/§12.* Touches: `src/Console`, `RlsFunctions`, `ContextSchema`.
+- [~] **`rls:install` / `rls:sync` / `rls:upgrade` commands.** `rls:install` done
+  (above). Still to do: `rls:sync` (regenerate typed `rls.<dim>()` helpers from
+  `ContextSchema`) and `rls:upgrade` (version-migrate `rls.*`). *Design §8/§12.*
 
 - [ ] **Extension-based install path (`--extension`).** Single-source the SQL and
   emit both the migration and a PGXN extension bundle (`.control` + version
