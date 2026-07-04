@@ -1,8 +1,8 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Support;
+namespace Radiergummi\LaravelRls\Tests\Support;
 
-use Radiergummi\Rls\Database\HandlesRlsContext;
+use Radiergummi\LaravelRls\Database\HandlesRlsContext;
 use Tpetry\PostgresqlEnhanced\PostgresEnhancedConnection;
 
 /**

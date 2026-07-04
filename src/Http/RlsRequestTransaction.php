@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Http;
+namespace Radiergummi\LaravelRls\Http;
 
 use Closure;
 use Illuminate\Support\Facades\DB;

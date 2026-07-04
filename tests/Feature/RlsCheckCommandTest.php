@@ -1,9 +1,9 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\Schema;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class RlsCheckCommandTest extends TestCase
 {

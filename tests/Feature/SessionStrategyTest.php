@@ -1,12 +1,12 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase;
-use Radiergummi\Rls\Facades\Rls;
-use Radiergummi\Rls\RlsServiceProvider;
-use Radiergummi\Rls\Support\RlsFunctions;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\RlsServiceProvider;
+use Radiergummi\LaravelRls\Support\RlsFunctions;
 
 /**
  * Session strategy sets a session-level GUC that persists across bare queries

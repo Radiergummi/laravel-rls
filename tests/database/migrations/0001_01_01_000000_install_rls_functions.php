@@ -2,7 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Support\RlsFunctions;
+use Radiergummi\LaravelRls\Support\RlsFunctions;
 
 return new class extends Migration
 {

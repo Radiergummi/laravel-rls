@@ -14,14 +14,14 @@
         "tpetry/laravel-postgresql-enhanced": "^3.7"
     },
     "autoload": {
-        "psr-4": { "Radiergummi\\Rls\\": "src/" }
+        "psr-4": { "Radiergummi\\LaravelRls\\": "src/" }
     },
     "autoload-dev": {
-        "psr-4": { "Radiergummi\\Rls\\Tests\\": "tests/" }
+        "psr-4": { "Radiergummi\\LaravelRls\\Tests\\": "tests/" }
     },
     "extra": {
         "laravel": {
-            "providers": ["Radiergummi\\Rls\\RlsServiceProvider"]
+            "providers": ["Radiergummi\\LaravelRls\\RlsServiceProvider"]
         }
     },
     "minimum-stability": "stable",

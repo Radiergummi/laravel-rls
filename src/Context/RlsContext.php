@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Context;
+namespace Radiergummi\LaravelRls\Context;
 
 final class RlsContext
 {

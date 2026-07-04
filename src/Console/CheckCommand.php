@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Console;
+namespace Radiergummi\LaravelRls\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;

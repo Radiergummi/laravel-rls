@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **Namespace:** `Radiergummi\Rls\` → `src/`; tests `Radiergummi\Rls\Tests\` → `tests/`. Copy verbatim.
+- **Namespace:** `Radiergummi\LaravelRls\` → `src/`; tests `Radiergummi\LaravelRls\Tests\` → `tests/`. Copy verbatim.
 - **PHP floor:** `^8.2`. Laravel: `^11.0|^12.0`.
 - **PoC scope — owner mode only:** `role_model = owner`, FORCE always on, strategy = `transaction`, boundary = `wrap`. NO restricted mode, NO extension install, NO session strategy, NO queue/Octane integration, NO HTTP middleware, NO app-layer fail-loud guard (rely on DB fail-closed), NO declared-schema typed helpers (use generic `rls.context('key')`).
 - **Test DB identity:** tests connect as **non-superuser** role `rls_app` (superusers bypass RLS even with FORCE). DB `rls_test` owned by `rls_app`.
@@ -65,7 +65,7 @@ tests/
 - Test: `tests/Feature/HarnessTest.php` (temporary smoke test, deleted in Step 8)
 
 **Interfaces:**
-- Produces: `Radiergummi\Rls\RlsServiceProvider` (empty register/boot for now); `Radiergummi\Rls\Tests\TestCase` base class configuring a `pgsql` connection named `pgsql` to `rls_test` as `rls_app`.
+- Produces: `Radiergummi\LaravelRls\RlsServiceProvider` (empty register/boot for now); `Radiergummi\LaravelRls\Tests\TestCase` base class configuring a `pgsql` connection named `pgsql` to `rls_test` as `rls_app`.
 
 - [ ] **Step 1: Initialize git and Docker Postgres**
 
@@ -120,14 +120,14 @@ Expected: `rls_app + rls_test ready`
         "phpunit/phpunit": "^11.0"
     },
     "autoload": {
-        "psr-4": { "Radiergummi\\Rls\\": "src/" }
+        "psr-4": { "Radiergummi\\LaravelRls\\": "src/" }
     },
     "autoload-dev": {
-        "psr-4": { "Radiergummi\\Rls\\Tests\\": "tests/" }
+        "psr-4": { "Radiergummi\\LaravelRls\\Tests\\": "tests/" }
     },
     "extra": {
         "laravel": {
-            "providers": ["Radiergummi\\Rls\\RlsServiceProvider"]
+            "providers": ["Radiergummi\\LaravelRls\\RlsServiceProvider"]
         }
     },
     "minimum-stability": "stable",
@@ -148,7 +148,7 @@ return [
     'role_model' => 'owner',
     'strategy' => 'transaction',
     'boundary' => 'wrap',
-    'connection_class' => \Radiergummi\Rls\Database\RlsPostgresConnection::class,
+    'connection_class' => \Radiergummi\LaravelRls\Database\RlsPostgresConnection::class,
 ];
 ```
 
@@ -159,7 +159,7 @@ return [
 ```php
 <?php
 
-namespace Radiergummi\Rls;
+namespace Radiergummi\LaravelRls;
 
 use Illuminate\Support\ServiceProvider;
 
@@ -184,11 +184,11 @@ class RlsServiceProvider extends ServiceProvider
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests;
+namespace Radiergummi\LaravelRls\Tests;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Radiergummi\Rls\RlsServiceProvider;
+use Radiergummi\LaravelRls\RlsServiceProvider;
 
 abstract class TestCase extends Orchestra
 {
@@ -251,10 +251,10 @@ abstract class TestCase extends Orchestra
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class HarnessTest extends TestCase
 {
@@ -295,10 +295,10 @@ git commit -m "chore: package skeleton and Postgres test harness"
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Unit;
+namespace Radiergummi\LaravelRls\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use Radiergummi\Rls\Context\RlsContext;
+use Radiergummi\LaravelRls\Context\RlsContext;
 
 class RlsContextTest extends TestCase
 {
@@ -345,7 +345,7 @@ Expected: FAIL — class `RlsContext` not found.
 ```php
 <?php
 
-namespace Radiergummi\Rls\Context;
+namespace Radiergummi\LaravelRls\Context;
 
 final class RlsContext
 {
@@ -420,7 +420,7 @@ git commit -m "feat: immutable RlsContext value object"
 
 **Interfaces:**
 - Consumes: `RlsContext` (Task 2).
-- Produces: `RlsManager` with `push(RlsContext): void`, `pop(): void`, `current(): ?RlsContext`, `hasContext(): bool`, `actingAs(array $context, ?Closure $callback = null): mixed`, `set(string $key, mixed $value): void`, `get(string $key): mixed`, `context(): array`, `withoutRls(string $reason, Closure $callback): mixed`, `system(string $reason, Closure $callback): mixed`, `forget(): void`, `setSyncCallback(?Closure): void`. Bound as singleton `rls`. Facade `Radiergummi\Rls\Facades\Rls`.
+- Produces: `RlsManager` with `push(RlsContext): void`, `pop(): void`, `current(): ?RlsContext`, `hasContext(): bool`, `actingAs(array $context, ?Closure $callback = null): mixed`, `set(string $key, mixed $value): void`, `get(string $key): mixed`, `context(): array`, `withoutRls(string $reason, Closure $callback): mixed`, `system(string $reason, Closure $callback): mixed`, `forget(): void`, `setSyncCallback(?Closure): void`. Bound as singleton `rls`. Facade `Radiergummi\LaravelRls\Facades\Rls`.
 - Note: `push`/`pop`/`set`/`forget` invoke the optional sync callback (wired in Task 5) so an already-open transaction re-injects context. In this task the callback is null (no DB).
 
 - [ ] **Step 1: Write the failing test**
@@ -430,11 +430,11 @@ git commit -m "feat: immutable RlsContext value object"
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Unit;
+namespace Radiergummi\LaravelRls\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use Radiergummi\Rls\Context\RlsContext;
-use Radiergummi\Rls\Context\RlsManager;
+use Radiergummi\LaravelRls\Context\RlsContext;
+use Radiergummi\LaravelRls\Context\RlsManager;
 
 class RlsManagerTest extends TestCase
 {
@@ -520,7 +520,7 @@ Expected: FAIL — class `RlsManager` not found.
 ```php
 <?php
 
-namespace Radiergummi\Rls\Context;
+namespace Radiergummi\LaravelRls\Context;
 
 use Closure;
 
@@ -627,14 +627,14 @@ class RlsManager
 ```php
 <?php
 
-namespace Radiergummi\Rls\Facades;
+namespace Radiergummi\LaravelRls\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @method static void push(\Radiergummi\Rls\Context\RlsContext $context)
+ * @method static void push(\Radiergummi\LaravelRls\Context\RlsContext $context)
  * @method static void pop()
- * @method static \Radiergummi\Rls\Context\RlsContext|null current()
+ * @method static \Radiergummi\LaravelRls\Context\RlsContext|null current()
  * @method static bool hasContext()
  * @method static array context()
  * @method static mixed get(string $key)
@@ -644,7 +644,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static mixed system(string $reason, \Closure $callback)
  * @method static void forget()
  *
- * @see \Radiergummi\Rls\Context\RlsManager
+ * @see \Radiergummi\LaravelRls\Context\RlsManager
  */
 class Rls extends Facade
 {
@@ -660,8 +660,8 @@ class Rls extends Facade
 Modify `src/RlsServiceProvider.php` `register()` to bind the singleton (append after `mergeConfigFrom`):
 
 ```php
-        $this->app->singleton('rls', fn () => new \Radiergummi\Rls\Context\RlsManager());
-        $this->app->alias('rls', \Radiergummi\Rls\Context\RlsManager::class);
+        $this->app->singleton('rls', fn () => new \Radiergummi\LaravelRls\Context\RlsManager());
+        $this->app->alias('rls', \Radiergummi\LaravelRls\Context\RlsManager::class);
 ```
 
 - [ ] **Step 6: Run tests to verify they pass**
@@ -695,10 +695,10 @@ git commit -m "feat: stack-based RlsManager with bypass scopes and facade"
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class RlsFunctionsTest extends TestCase
 {
@@ -750,7 +750,7 @@ Expected: FAIL — schema/function `rls` does not exist (migration not present y
 ```php
 <?php
 
-namespace Radiergummi\Rls\Support;
+namespace Radiergummi\LaravelRls\Support;
 
 use Illuminate\Support\Facades\DB;
 
@@ -801,7 +801,7 @@ class RlsFunctions
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Radiergummi\Rls\Support\RlsFunctions;
+use Radiergummi\LaravelRls\Support\RlsFunctions;
 
 return new class extends Migration
 {
@@ -849,11 +849,11 @@ git commit -m "feat: rls.context and rls.bypass SQL helper functions"
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Facades\Rls;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class ContextInjectionTest extends TestCase
 {
@@ -894,7 +894,7 @@ Expected: FAIL — context not reaching DB (`v` is null), because no connection 
 ```php
 <?php
 
-namespace Radiergummi\Rls\Database;
+namespace Radiergummi\LaravelRls\Database;
 
 use Closure;
 
@@ -968,7 +968,7 @@ trait HandlesRlsContext
 ```php
 <?php
 
-namespace Radiergummi\Rls\Database;
+namespace Radiergummi\LaravelRls\Database;
 
 use Illuminate\Database\PostgresConnection;
 
@@ -984,8 +984,8 @@ Modify `src/RlsServiceProvider.php`. Add imports at top:
 
 ```php
 use Illuminate\Database\Connection;
-use Radiergummi\Rls\Context\RlsManager;
-use Radiergummi\Rls\Database\RlsPostgresConnection;
+use Radiergummi\LaravelRls\Context\RlsManager;
+use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
 ```
 
 In `register()`, after binding the singleton, register the resolver:
@@ -1053,11 +1053,11 @@ git commit -m "feat: inject transaction-local RLS context via custom connection"
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class PolicyDslTest extends TestCase
 {
@@ -1116,7 +1116,7 @@ Expected: FAIL — `Method Illuminate\Database\Schema\Blueprint::scopedBy does n
 ```php
 <?php
 
-namespace Radiergummi\Rls\Schema;
+namespace Radiergummi\LaravelRls\Schema;
 
 use Illuminate\Database\Schema\Blueprint;
 
@@ -1181,7 +1181,7 @@ The macros queue a `rlsRaw` command; the Postgres schema grammar must know how t
 Modify `src/RlsServiceProvider.php` `boot()` — append:
 
 ```php
-        \Radiergummi\Rls\Schema\RlsSchemaMacros::register();
+        \Radiergummi\LaravelRls\Schema\RlsSchemaMacros::register();
 ```
 
 - [ ] **Step 6: Run tests to verify they pass**
@@ -1221,13 +1221,13 @@ git commit -m "feat: scopedBy migration DSL emitting restrictive isolation polic
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Radiergummi\Rls\Testing\InteractsWithRls;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Testing\InteractsWithRls;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class TestingHelpersTest extends TestCase
 {
@@ -1284,11 +1284,11 @@ Expected: FAIL — trait `InteractsWithRls` not found.
 ```php
 <?php
 
-namespace Radiergummi\Rls\Testing;
+namespace Radiergummi\LaravelRls\Testing;
 
 use Closure;
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Facades\Rls;
+use Radiergummi\LaravelRls\Facades\Rls;
 
 trait InteractsWithRls
 {
@@ -1469,12 +1469,12 @@ return new class extends Migration
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Models;
+namespace Radiergummi\LaravelRls\Tests\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Radiergummi\Rls\Tests\Database\Factories\TenantFactory;
+use Radiergummi\LaravelRls\Tests\Database\Factories\TenantFactory;
 
 class Tenant extends Model
 {
@@ -1495,12 +1495,12 @@ class Tenant extends Model
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Models;
+namespace Radiergummi\LaravelRls\Tests\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Radiergummi\Rls\Tests\Database\Factories\DocumentFactory;
+use Radiergummi\LaravelRls\Tests\Database\Factories\DocumentFactory;
 
 class Document extends Model
 {
@@ -1523,10 +1523,10 @@ class Document extends Model
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Database\Factories;
+namespace Radiergummi\LaravelRls\Tests\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Radiergummi\Rls\Tests\Models\Tenant;
+use Radiergummi\LaravelRls\Tests\Models\Tenant;
 
 class TenantFactory extends Factory
 {
@@ -1544,10 +1544,10 @@ class TenantFactory extends Factory
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Database\Factories;
+namespace Radiergummi\LaravelRls\Tests\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Radiergummi\Rls\Tests\Models\Document;
+use Radiergummi\LaravelRls\Tests\Models\Document;
 
 class DocumentFactory extends Factory
 {
@@ -1567,14 +1567,14 @@ class DocumentFactory extends Factory
 ```php
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Facades\Rls;
-use Radiergummi\Rls\Testing\InteractsWithRls;
-use Radiergummi\Rls\Tests\Models\Document;
-use Radiergummi\Rls\Tests\Models\Tenant;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\Testing\InteractsWithRls;
+use Radiergummi\LaravelRls\Tests\Models\Document;
+use Radiergummi\LaravelRls\Tests\Models\Tenant;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class TenantIsolationTest extends TestCase
 {

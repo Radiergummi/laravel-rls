@@ -1,12 +1,12 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Facades\Rls;
-use Radiergummi\Rls\RlsServiceProvider;
-use Radiergummi\Rls\Tests\Support\RlsEnhancedConnection;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\RlsServiceProvider;
+use Radiergummi\LaravelRls\Tests\Support\RlsEnhancedConnection;
+use Radiergummi\LaravelRls\Tests\TestCase;
 use Tpetry\PostgresqlEnhanced\PostgresEnhancedConnection;
 use Tpetry\PostgresqlEnhanced\PostgresqlEnhancedServiceProvider;
 

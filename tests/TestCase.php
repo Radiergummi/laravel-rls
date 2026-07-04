@@ -1,10 +1,10 @@
 <?php
 
-namespace Radiergummi\Rls\Tests;
+namespace Radiergummi\LaravelRls\Tests;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Radiergummi\Rls\RlsServiceProvider;
+use Radiergummi\LaravelRls\RlsServiceProvider;
 
 abstract class TestCase extends Orchestra
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Database;
+namespace Radiergummi\LaravelRls\Database;
 
 use Illuminate\Database\PostgresConnection;
 

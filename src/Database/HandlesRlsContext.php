@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Database;
+namespace Radiergummi\LaravelRls\Database;
 
 use Closure;
 
@@ -73,14 +73,14 @@ trait HandlesRlsContext
 
         if (! $manager->hasContext()) {
             if ($failLoud) {
-                throw \Radiergummi\Rls\Exceptions\MissingTenantContext::forQuery($query);
+                throw \Radiergummi\LaravelRls\Exceptions\MissingTenantContext::forQuery($query);
             }
 
             return;
         }
 
         if ($explicit && $this->transactionLevel() === 0) {
-            throw \Radiergummi\Rls\Exceptions\MissingContextBoundary::forQuery($query);
+            throw \Radiergummi\LaravelRls\Exceptions\MissingContextBoundary::forQuery($query);
         }
     }
 

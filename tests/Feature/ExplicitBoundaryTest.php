@@ -1,12 +1,12 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase;
-use Radiergummi\Rls\Exceptions\MissingContextBoundary;
-use Radiergummi\Rls\Facades\Rls;
-use Radiergummi\Rls\RlsServiceProvider;
+use Radiergummi\LaravelRls\Exceptions\MissingContextBoundary;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\RlsServiceProvider;
 
 /**
  * Explicit boundary mode fails loud when a context-bearing query hits an

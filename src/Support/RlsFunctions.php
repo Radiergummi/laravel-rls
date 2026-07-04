@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Support;
+namespace Radiergummi\LaravelRls\Support;
 
 use Illuminate\Support\Facades\DB;
 

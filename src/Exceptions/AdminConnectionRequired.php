@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Exceptions;
+namespace Radiergummi\LaravelRls\Exceptions;
 
 use RuntimeException;
 

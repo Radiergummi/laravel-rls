@@ -1,8 +1,8 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class RlsAuditCommandTest extends TestCase
 {

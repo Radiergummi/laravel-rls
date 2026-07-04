@@ -1,11 +1,11 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
-use Radiergummi\Rls\Exceptions\MissingTenantContext;
-use Radiergummi\Rls\Facades\Rls;
-use Radiergummi\Rls\Tests\Models\Document;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Exceptions\MissingTenantContext;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\Tests\Models\Document;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class FailLoudGuardTest extends TestCase
 {

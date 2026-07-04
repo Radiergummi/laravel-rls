@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Context;
+namespace Radiergummi\LaravelRls\Context;
 
 use Closure;
 use Illuminate\Log\Context\Repository;

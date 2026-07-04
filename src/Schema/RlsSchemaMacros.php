@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Schema;
+namespace Radiergummi\LaravelRls\Schema;
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;

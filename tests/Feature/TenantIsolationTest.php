@@ -1,13 +1,13 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Facades\Rls;
-use Radiergummi\Rls\Testing\InteractsWithRls;
-use Radiergummi\Rls\Tests\Models\Document;
-use Radiergummi\Rls\Tests\Models\Tenant;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\Testing\InteractsWithRls;
+use Radiergummi\LaravelRls\Tests\Models\Document;
+use Radiergummi\LaravelRls\Tests\Models\Tenant;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class TenantIsolationTest extends TestCase
 {

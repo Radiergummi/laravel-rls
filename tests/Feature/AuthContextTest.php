@@ -1,11 +1,11 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Auth\GenericUser;
-use Radiergummi\Rls\Facades\Rls;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class AuthContextTest extends TestCase
 {

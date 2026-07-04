@@ -1,11 +1,11 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Radiergummi\Rls\Http\RlsRequestTransaction;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Http\RlsRequestTransaction;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class RequestTransactionMiddlewareTest extends TestCase
 {

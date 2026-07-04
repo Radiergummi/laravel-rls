@@ -17,5 +17,5 @@ return [
     // loud in PHP with MissingTenantContext before hitting the database.
     'on_missing_context' => 'closed',
 
-    'connection_class' => \Radiergummi\Rls\Database\RlsPostgresConnection::class,
+    'connection_class' => \Radiergummi\LaravelRls\Database\RlsPostgresConnection::class,
 ];

@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Jobs;
+namespace Radiergummi\LaravelRls\Tests\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -8,7 +8,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
-use Radiergummi\Rls\Facades\Rls;
+use Radiergummi\LaravelRls\Facades\Rls;
 
 class RecordTenantJob implements ShouldQueue
 {

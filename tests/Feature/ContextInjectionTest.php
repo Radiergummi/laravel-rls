@@ -1,10 +1,10 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Facades\Rls;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class ContextInjectionTest extends TestCase
 {

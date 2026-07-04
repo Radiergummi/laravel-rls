@@ -1,12 +1,12 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Feature;
+namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Radiergummi\Rls\Testing\InteractsWithRls;
-use Radiergummi\Rls\Tests\TestCase;
+use Radiergummi\LaravelRls\Testing\InteractsWithRls;
+use Radiergummi\LaravelRls\Tests\TestCase;
 
 class TestingHelpersTest extends TestCase
 {

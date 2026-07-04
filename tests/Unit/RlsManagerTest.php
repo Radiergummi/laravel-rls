@@ -1,11 +1,11 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Unit;
+namespace Radiergummi\LaravelRls\Tests\Unit;
 
 use Illuminate\Events\Dispatcher;
 use Illuminate\Log\Context\Repository;
 use PHPUnit\Framework\TestCase;
-use Radiergummi\Rls\Context\RlsManager;
+use Radiergummi\LaravelRls\Context\RlsManager;
 
 class RlsManagerTest extends TestCase
 {

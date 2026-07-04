@@ -1,9 +1,9 @@
 <?php
 
-namespace Radiergummi\Rls\Tests\Unit;
+namespace Radiergummi\LaravelRls\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use Radiergummi\Rls\Context\RlsContext;
+use Radiergummi\LaravelRls\Context\RlsContext;
 
 class RlsContextTest extends TestCase
 {

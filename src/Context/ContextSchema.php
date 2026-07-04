@@ -1,6 +1,6 @@
 <?php
 
-namespace Radiergummi\Rls\Context;
+namespace Radiergummi\LaravelRls\Context;
 
 /**
  * Declares the app's context dimensions and their Postgres types, used to

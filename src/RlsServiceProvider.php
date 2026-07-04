@@ -1,11 +1,11 @@
 <?php
 
-namespace Radiergummi\Rls;
+namespace Radiergummi\LaravelRls;
 
 use Illuminate\Database\Connection;
 use Illuminate\Support\ServiceProvider;
-use Radiergummi\Rls\Context\RlsManager;
-use Radiergummi\Rls\Database\RlsPostgresConnection;
+use Radiergummi\LaravelRls\Context\RlsManager;
+use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
 
 class RlsServiceProvider extends ServiceProvider
 {
@@ -18,8 +18,8 @@ class RlsServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
-                \Radiergummi\Rls\Console\CheckCommand::class,
-                \Radiergummi\Rls\Console\AuditCommand::class,
+                \Radiergummi\LaravelRls\Console\CheckCommand::class,
+                \Radiergummi\LaravelRls\Console\AuditCommand::class,
             ]);
         }
     }
@@ -49,7 +49,7 @@ class RlsServiceProvider extends ServiceProvider
             }
         });
 
-        \Radiergummi\Rls\Schema\RlsSchemaMacros::register();
+        \Radiergummi\LaravelRls\Schema\RlsSchemaMacros::register();
 
         \Illuminate\Support\Facades\Context::dehydrating(
             fn ($context) => RlsManager::stripBypassOnDehydrate($context),
@@ -65,7 +65,7 @@ class RlsServiceProvider extends ServiceProvider
                 $admin = config('rls.admin_connection');
 
                 if ($admin === null) {
-                    throw \Radiergummi\Rls\Exceptions\AdminConnectionRequired::forReason($reason);
+                    throw \Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired::forReason($reason);
                 }
 
                 $db = $this->app->make('db');

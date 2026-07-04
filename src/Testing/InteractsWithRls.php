@@ -1,11 +1,11 @@
 <?php
 
-namespace Radiergummi\Rls\Testing;
+namespace Radiergummi\LaravelRls\Testing;
 
 use Closure;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Radiergummi\Rls\Facades\Rls;
+use Radiergummi\LaravelRls\Facades\Rls;
 
 trait InteractsWithRls
 {
