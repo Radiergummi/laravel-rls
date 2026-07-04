@@ -3,7 +3,9 @@
 namespace Radiergummi\LaravelRls\Context;
 
 use Closure;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Log\Context\Repository;
+use Radiergummi\LaravelRls\Events\RlsBypassed;
 
 class RlsManager
 {
@@ -17,7 +19,10 @@ class RlsManager
 
     private ?ContextSchema $schema = null;
 
-    public function __construct(private readonly Repository $context) {}
+    public function __construct(
+        private readonly Repository $context,
+        private readonly ?Dispatcher $events = null,
+    ) {}
 
     /**
      * Declare the app's context dimensions (opt-in sugar). Enables typed PHP
@@ -164,6 +169,8 @@ class RlsManager
 
     public function withoutRls(string $reason, Closure $callback): mixed
     {
+        $this->events?->dispatch(new RlsBypassed($reason));
+
         if ($this->bypassHandler !== null) {
             return ($this->bypassHandler)($reason, $callback);
         }

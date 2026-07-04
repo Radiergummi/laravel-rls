@@ -17,7 +17,10 @@ class RlsServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/rls.php', 'rls');
 
-        $this->app->singleton('rls', fn ($app) => new RlsManager($app->make(\Illuminate\Log\Context\Repository::class)));
+        $this->app->singleton('rls', fn ($app) => new RlsManager(
+            $app->make(\Illuminate\Log\Context\Repository::class),
+            $app->make('events'),
+        ));
         $this->app->alias('rls', RlsManager::class);
 
         if ($this->app->runningInConsole()) {
@@ -55,6 +58,16 @@ class RlsServiceProvider extends ServiceProvider
         $this->app['events']->listen(
             \Illuminate\Auth\Events\Authenticated::class,
             fn ($event) => $manager->establishFromUser($event->user),
+        );
+
+        // Bypass observability: every withoutRls()/system() is logged with its
+        // reason, so RLS bypass stays visible in production logs.
+        $this->app['events']->listen(
+            \Radiergummi\LaravelRls\Events\RlsBypassed::class,
+            fn ($event) => \Illuminate\Support\Facades\Log::notice(
+                "RLS bypassed: {$event->reason}",
+                ['reason' => $event->reason],
+            ),
         );
 
         // Worker boundary handling: on long-lived workers a context that was

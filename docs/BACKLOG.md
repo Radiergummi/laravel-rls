@@ -88,10 +88,10 @@ and *where* it touches the code.
   `laravel-rls` slots in *beneath* existing tenancy packages. *Design §19 — the
   strategic positioning.*
 
-- [ ] **Bypass observability: logging + threshold in `rls:audit`.** `withoutRls()`
-  should fire a `RlsBypassed` event and log with the reason; `rls:audit` should
-  optionally fail CI over a threshold. Reason string is already required.
-  *Design §16.*
+- [x] **Bypass observability: logging + threshold in `rls:audit`.** `withoutRls()`
+  fires an `RlsBypassed` event (carrying the reason); the provider logs each at
+  `notice`. `rls:audit --threshold=N` exits 1 when the bypass call-site count
+  exceeds N. *Design §16.*
 
 - [ ] **Per-table fail-loud granularity for raw SQL.** The guard detects managed
   tables by quoted-name matching in the SQL — fine for the query builder, fuzzy

@@ -143,4 +143,22 @@ class RlsManagerTest extends TestCase
 
         $this->assertSame('anything-goes', $m->get('tenant_id'));
     }
+
+    public function test_without_rls_dispatches_a_bypass_event_with_the_reason(): void
+    {
+        $events = new Dispatcher();
+        $captured = null;
+        $events->listen(
+            \Radiergummi\LaravelRls\Events\RlsBypassed::class,
+            function ($event) use (&$captured) {
+                $captured = $event;
+            },
+        );
+
+        $m = new RlsManager(new Repository(new Dispatcher()), $events);
+        $m->withoutRls('nightly-report', fn () => null);
+
+        $this->assertInstanceOf(\Radiergummi\LaravelRls\Events\RlsBypassed::class, $captured);
+        $this->assertSame('nightly-report', $captured->reason);
+    }
 }

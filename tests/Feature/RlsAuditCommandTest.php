@@ -15,4 +15,20 @@ class RlsAuditCommandTest extends TestCase
             ->expectsOutputToContain('2 bypass call site(s) found.')
             ->assertExitCode(0);
     }
+
+    public function test_fails_when_bypass_count_exceeds_threshold(): void
+    {
+        $path = __DIR__ . '/../fixtures/audit'; // 2 call sites
+
+        $this->artisan('rls:audit', ['--path' => [$path], '--threshold' => 1])
+            ->assertExitCode(1);
+    }
+
+    public function test_passes_when_bypass_count_is_within_threshold(): void
+    {
+        $path = __DIR__ . '/../fixtures/audit'; // 2 call sites
+
+        $this->artisan('rls:audit', ['--path' => [$path], '--threshold' => 2])
+            ->assertExitCode(0);
+    }
 }

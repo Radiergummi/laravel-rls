@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\File;
 
 class AuditCommand extends Command
 {
-    protected $signature = 'rls:audit {--path=* : Directories to scan (defaults to the app directory)}';
+    protected $signature = 'rls:audit
+        {--path=* : Directories to scan (defaults to the app directory)}
+        {--threshold= : Fail (exit 1) if the bypass call-site count exceeds this number}';
 
     protected $description = 'Report every RLS bypass call site so bypass stays visible and reviewable';
 
@@ -47,6 +49,14 @@ class AuditCommand extends Command
         }
 
         $this->info(count($findings) . ' bypass call site(s) found.');
+
+        $threshold = $this->option('threshold');
+
+        if ($threshold !== null && count($findings) > (int) $threshold) {
+            $this->error("Bypass call sites (" . count($findings) . ") exceed the threshold of {$threshold}.");
+
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }
