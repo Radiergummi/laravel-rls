@@ -42,9 +42,15 @@ and *where* it touches the code.
   own resolver is tracked by identity so re-registration isn't a false positive.
   *Design §6.*
 
-- [ ] **Multi-connection / read-replica context.** Context is injected on the
-  connection that runs the query; a read replica connection needs the same
-  treatment. Confirm and cover. *Design §18.*
+- [x] **Multi-connection / read-replica context.** Under the session strategy a
+  read/write-split connection's read PDO (the replica, used by plain SELECTs
+  outside a transaction) is now given the same GUCs as the write PDO
+  (`HandlesRlsContext::setConfig` mirrors to the read PDO when distinct). The
+  transaction/wrap strategy already covers any connection via `beginTransaction`
+  injection. *Design §18.*
+  - *Residual:* a **separate named** replica connection under the session
+    strategy isn't synced (the sync callback only touches the default connection,
+    and secondary connections resolve lazily). Fine under transaction/wrap.
 
 ---
 

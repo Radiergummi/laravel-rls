@@ -209,5 +209,19 @@ trait HandlesRlsContext
         // ambiguity; name and value stay bound and injection-safe.
         $flag = $local ? 'true' : 'false';
         $this->statement("select set_config(?, ?, {$flag})", [$name, $value]);
+
+        // Session GUCs live per backend session. A read/write split has a
+        // separate read PDO (the replica) that plain SELECTs route to, so the
+        // context must be mirrored there too. Transaction-local GUCs need no
+        // mirroring: in-transaction reads use the write PDO.
+        if (! $local && $this->hasDistinctReadPdo()) {
+            $this->select("select set_config(?, ?, {$flag})", [$name, $value], true);
+        }
+    }
+
+    private function hasDistinctReadPdo(): bool
+    {
+        return $this->transactionLevel() === 0
+            && $this->getReadPdo() !== $this->getPdo();
     }
 }
