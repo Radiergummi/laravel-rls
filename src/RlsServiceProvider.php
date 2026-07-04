@@ -60,6 +60,30 @@ class RlsServiceProvider extends ServiceProvider
             fn ($event) => $manager->establishFromUser($event->user),
         );
 
+        // Leak canary: on long-lived workers a context that was never popped
+        // would carry into the next job/request (cross-tenant hazard). Check at
+        // each boundary. Octane is optional, so guard its event class.
+        //
+        // For the queue we hook `Looping` (fired between jobs in the daemon
+        // loop, before Laravel hydrates the next job's context) rather than
+        // `JobProcessing` (which fires *after* hydration and would flag every
+        // job's own context as a leak). `--once` runs a fresh process, so it
+        // needs no check. The listener must return null, not false, or it would
+        // veto the worker's `until(Looping)` loop.
+        $this->app['events']->listen(
+            \Illuminate\Queue\Events\Looping::class,
+            function () use ($manager) {
+                $manager->checkForLeak('job');
+            },
+        );
+
+        if (class_exists(\Laravel\Octane\Events\RequestReceived::class)) {
+            $this->app['events']->listen(
+                \Laravel\Octane\Events\RequestReceived::class,
+                fn () => $manager->checkForLeak('request'),
+            );
+        }
+
         if (config('rls.role_model') === 'restricted') {
             $manager->setBypassHandler(function (string $reason, \Closure $callback) {
                 $admin = config('rls.admin_connection');

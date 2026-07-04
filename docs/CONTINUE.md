@@ -25,10 +25,10 @@ the answer is **yes**, with specific gotchas now captured in code and tests.
 
 ## Current state
 
-- **Branch:** `poc-rls` (19 commits, one self-contained feature each). Not pushed,
-  no PR.
-- **Tests:** `vendor/bin/phpunit` → 56 tests / 118 assertions, all passing.
-- **Not merged to any main branch** (repo was `git init`-ed fresh for the PoC).
+- **Branch:** `main` (pushed to origin; one self-contained commit per feature).
+- **Tests:** `vendor/bin/phpunit` → 67 tests / 130 assertions, all passing.
+- **P0 hardening underway:** leak canary + context value validation done; see
+  [`docs/BACKLOG.md`](BACKLOG.md) for the rest.
 
 ## Bring the environment back up
 

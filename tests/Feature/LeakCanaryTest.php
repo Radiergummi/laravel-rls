@@ -1,0 +1,64 @@
+<?php
+
+namespace Radiergummi\LaravelRls\Tests\Feature;
+
+use Illuminate\Queue\Events\Looping;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
+use Radiergummi\LaravelRls\Context\RlsManager;
+use Radiergummi\LaravelRls\Exceptions\RlsContextLeaked;
+use Radiergummi\LaravelRls\Facades\Rls;
+use Radiergummi\LaravelRls\Tests\TestCase;
+
+class LeakCanaryTest extends TestCase
+{
+    public function test_logs_and_clears_a_leaked_context(): void
+    {
+        Log::spy();
+        Rls::actingAs(['tenant_id' => 'leaked-from-previous-job']);
+
+        app(RlsManager::class)->checkForLeak('job');
+
+        Log::shouldHaveReceived('critical')->once();
+        $this->assertFalse(Rls::hasContext(), 'leaked context must be cleared before the new unit of work runs');
+    }
+
+    public function test_clean_stack_is_silent(): void
+    {
+        Log::spy();
+
+        app(RlsManager::class)->checkForLeak('job');
+
+        Log::shouldNotHaveReceived('critical');
+    }
+
+    public function test_throw_mode_raises_and_still_clears(): void
+    {
+        config(['rls.leak_canary' => 'throw']);
+        Rls::actingAs(['tenant_id' => 'leaked']);
+
+        try {
+            app(RlsManager::class)->checkForLeak('request');
+            $this->fail('Expected RlsContextLeaked to be thrown');
+        } catch (RlsContextLeaked) {
+            $this->assertFalse(Rls::hasContext(), 'context must be cleared even when throwing');
+        }
+    }
+
+    public function test_off_mode_does_nothing(): void
+    {
+        config(['rls.leak_canary' => 'off']);
+        Log::spy();
+        Rls::actingAs(['tenant_id' => 'leaked']);
+
+        app(RlsManager::class)->checkForLeak('job');
+
+        Log::shouldNotHaveReceived('critical');
+        Rls::forget();
+    }
+
+    public function test_registers_queue_looping_listener(): void
+    {
+        $this->assertTrue(Event::hasListeners(Looping::class));
+    }
+}

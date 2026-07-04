@@ -8,18 +8,18 @@ and *where* it touches the code.
 
 ## P0 — Correctness & safety hardening (do before any real use)
 
-- [ ] **Production leak canary.** The `InteractsWithRls` test trait asserts an
-  empty context stack in teardown; there is no runtime equivalent. Add a
-  request/job-start assertion (or a middleware) that the stack is empty, logging
-  loudly if not. Highest-severity failure mode is an Octane/worker context leak
-  across tenants. *Design §4/§18.* Touches: `RlsManager`, a boot listener for
-  Octane `RequestReceived` / queue `JobProcessing`.
+- [x] **Production leak canary.** `RlsManager::checkForLeak()` clears any stale
+  context and surfaces it per config `leak_canary` (`log` default | `throw` |
+  `off`). Wired to Octane `RequestReceived` and queue `Looping` — deliberately
+  *not* `JobProcessing`, which fires after Laravel hydrates the job's own context
+  and would flag every job as a leak; `Looping` fires between jobs before
+  hydration (`--once` is a fresh process, needs no check). *Design §4/§18.*
 
-- [ ] **Context value validation at `set()` time.** A malformed value (e.g.
-  non-UUID) currently reaches the DB and throws on `::uuid`, 500-ing *every*
-  query (cluster-wide DoS). Validate against the declared `ContextSchema` type
-  when `defineContext()` was used. Touches: `RlsManager::actingAs/set`,
-  `ContextSchema`.
+- [x] **Context value validation at `set()` time.** `RlsManager::push()`
+  validates every value against the declared `ContextSchema` type via
+  `ContextSchema::matches()`, throwing `InvalidContextValue` in PHP before a
+  malformed value can reach the DB. No-op when `defineContext()` wasn't used or
+  for undeclared dimensions. *Design §4/§18.*
 
 - [ ] **Verify against real PgBouncer (transaction pooling).** The PoC proves the
   transaction-local mechanism that *should* work under transaction pooling, but

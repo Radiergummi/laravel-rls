@@ -183,6 +183,34 @@ class RlsManager
     }
 
     /**
+     * Runtime leak canary. On long-lived workers (queue, Octane) a context that
+     * was never popped would silently carry over into the next unit of work — a
+     * cross-tenant hazard. Called at each request/job boundary: if the stack is
+     * not empty it clears the stale context and surfaces it per the configured
+     * mode ('log' | 'throw' | 'off').
+     */
+    public function checkForLeak(string $boundary): void
+    {
+        $mode = \config('rls.leak_canary', 'log');
+
+        if ($mode === 'off' || ! $this->hasContext()) {
+            return;
+        }
+
+        $dimensions = array_keys($this->context());
+        $this->forget();
+
+        if ($mode === 'throw') {
+            throw \Radiergummi\LaravelRls\Exceptions\RlsContextLeaked::at($boundary, $dimensions);
+        }
+
+        \Illuminate\Support\Facades\Log::critical(
+            "RLS context leaked into a new {$boundary} and was cleared.",
+            ['boundary' => $boundary, 'dimensions' => $dimensions],
+        );
+    }
+
+    /**
      * Strip bypass contexts before the context is serialized into a queued
      * job, so a job dispatched inside a bypass scope never inherits bypass.
      */
