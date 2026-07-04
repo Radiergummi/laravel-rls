@@ -84,10 +84,10 @@ and *where* it touches the code.
   restricted) and that a restricted role setting `app.bypass='on'` directly stays
   confined — the bypass GUC is inert without the clause. *Design §5/§7.*
 
-- [ ] **Tenancy-package bridges (stancl / spatie).** Ship a first-class
-  `resolveContextUsing(fn () => ['tenant_id' => tenant()?->getKey()])` bridge so
-  `laravel-rls` slots in *beneath* existing tenancy packages. *Design §19 — the
-  strategic positioning.*
+- [~] **Tenancy-package bridges (stancl / spatie).** Docs-only recipe shipped in
+  the README ("Using beneath a tenancy package") per the resolved design decision.
+  A first-class bridge (auto-wiring their tenant-initialized events) can follow.
+  *Design §19 — the strategic positioning.*
 
 - [x] **Bypass observability: logging + threshold in `rls:audit`.** `withoutRls()`
   fires an `RlsBypassed` event (carrying the reason); the provider logs each at

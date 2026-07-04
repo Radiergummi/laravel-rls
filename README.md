@@ -67,6 +67,34 @@ for the full design and threat model.
 | `on_missing_context` | `closed` | `closed` (DB zero rows) or `throw` (fail-loud in PHP) |
 | `connection_class` | `RlsPostgresConnection` | Set to a class extending another package's connection to compose |
 
+## Using beneath a tenancy package
+
+`laravel-rls` isn't a tenancy framework — it's the database-enforcement layer
+that slots *underneath* one. If you already use stancl/tenancy or spatie's
+multitenancy for routing, identification, and per-tenant resources, keep them.
+Point `resolveContextUsing()` at whatever they already resolved, and RLS becomes
+the backstop that makes cross-tenant reads impossible at the database, not just
+unlikely in your query builder.
+
+Put this in your app-side `RlsServiceProvider` (published by `rls:install`):
+
+```php
+// stancl/tenancy — tenant() is bound while a tenant is initialized
+Rls::resolveContextUsing(fn () => tenant()
+    ? ['tenant_id' => tenant()->getTenantKey()]
+    : []);
+
+// spatie/laravel-multitenancy — the current tenant is a global
+Rls::resolveContextUsing(fn () => Tenant::current()
+    ? ['tenant_id' => Tenant::current()->getKey()]
+    : []);
+```
+
+Those packages switch tenants via their own events rather than Laravel's
+`Authenticated` event, so also re-establish context on their tenant-initialized
+hook (e.g. stancl's `TenancyInitialized`) with `Rls::actingAs(...)`. A
+first-class bridge for this is on the backlog; the recipe above works today.
+
 ## Key findings (things the PoC taught us)
 
 - **RLS is a no-op for the table owner unless FORCE** — and superusers/BYPASSRLS
