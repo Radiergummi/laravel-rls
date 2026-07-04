@@ -162,6 +162,47 @@ trait HandlesRlsContext
         }
     }
 
+    /**
+     * Blank every session GUC we set on this connection. Under the session
+     * strategy a GUC persists on the pooled connection and would otherwise
+     * carry one request/job's context into the next (Octane resets the scoped
+     * context stack between requests, but not the persistent connection). Wired
+     * to worker boundaries from the service provider. A no-op under the
+     * transaction strategy, where GUCs die with their transaction.
+     */
+    public function resetSessionContext(): void
+    {
+        if (config('rls.strategy', 'transaction') !== 'session') {
+            return;
+        }
+
+        $prefix = config('rls.prefix', 'app.');
+
+        foreach ($this->rlsAppliedKeys as $key) {
+            $this->setConfig($prefix . $key, '', false);
+        }
+        $this->rlsAppliedKeys = [];
+
+        $this->setConfig($prefix . 'bypass', '', false);
+    }
+
+    /**
+     * After a dropped connection is re-established, the fresh backend has none
+     * of our session GUCs. Re-apply the current context so the session strategy
+     * does not silently lose it (queries would run unscoped / fail-closed).
+     */
+    public function reconnect()
+    {
+        $result = parent::reconnect();
+
+        if (config('rls.strategy', 'transaction') === 'session') {
+            $this->rlsAppliedKeys = [];
+            $this->applyRlsContext();
+        }
+
+        return $result;
+    }
+
     private function setConfig(string $name, string $value, bool $local): void
     {
         // is_local is inlined as a literal (not bound) so no boolean-binding

@@ -27,11 +27,13 @@ and *where* it touches the code.
   transaction mode to the test matrix, plus the prepared-statement caveat
   (PgBouncer ≥1.21 or `PDO::ATTR_EMULATE_PREPARES`). *Design §15.*
 
-- [ ] **`session` strategy reset on reconnect + Octane flush.** Session GUCs
-  persist on the connection and will leak across requests/jobs without a reset
-  hook. Wire connection `reconnect` + Octane request boundaries to re-establish
-  or clear. Currently only safe under `transaction` strategy. *Design §16 failure
-  modes.* Touches: `HandlesRlsContext`, provider boot.
+- [x] **`session` strategy reset on reconnect + Octane flush.**
+  `HandlesRlsContext::resetSessionContext()` blanks the persistent session GUCs;
+  the provider calls it on each worker boundary (queue `Looping`, Octane
+  `RequestReceived`) via `flushSessionContext()` — catching the case the leak
+  canary can't (empty scoped stack but live GUC on the pooled connection). An
+  overridden `reconnect()` re-establishes context on a fresh backend so it isn't
+  silently lost. *Design §16 failure modes.*
 
 - [x] **Loud collision detection for the connection resolver.**
   `RlsServiceProvider::registerConnectionResolver()` throws `ResolverCollision`

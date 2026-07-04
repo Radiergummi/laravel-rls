@@ -57,9 +57,11 @@ class RlsServiceProvider extends ServiceProvider
             fn ($event) => $manager->establishFromUser($event->user),
         );
 
-        // Leak canary: on long-lived workers a context that was never popped
-        // would carry into the next job/request (cross-tenant hazard). Check at
-        // each boundary. Octane is optional, so guard its event class.
+        // Worker boundary handling: on long-lived workers a context that was
+        // never popped would carry into the next job/request (leak canary), and
+        // under the session strategy a session GUC persists on the pooled
+        // connection even when the scoped context stack is reset (flush). Both
+        // run at each boundary. Octane is optional, so guard its event class.
         //
         // For the queue we hook `Looping` (fired between jobs in the daemon
         // loop, before Laravel hydrates the next job's context) rather than
@@ -67,17 +69,24 @@ class RlsServiceProvider extends ServiceProvider
         // job's own context as a leak). `--once` runs a fresh process, so it
         // needs no check. The listener must return null, not false, or it would
         // veto the worker's `until(Looping)` loop.
+        $onBoundary = function (string $boundary) use ($manager): void {
+            $manager->checkForLeak($boundary);
+            $this->flushSessionContext();
+        };
+
         $this->app['events']->listen(
             \Illuminate\Queue\Events\Looping::class,
-            function () use ($manager) {
-                $manager->checkForLeak('job');
+            function () use ($onBoundary): void {
+                $onBoundary('job');
             },
         );
 
         if (class_exists(\Laravel\Octane\Events\RequestReceived::class)) {
             $this->app['events']->listen(
                 \Laravel\Octane\Events\RequestReceived::class,
-                fn () => $manager->checkForLeak('request'),
+                function () use ($onBoundary): void {
+                    $onBoundary('request');
+                },
             );
         }
 
@@ -125,6 +134,24 @@ class RlsServiceProvider extends ServiceProvider
         };
 
         Connection::resolverFor('pgsql', self::$ownResolver);
+    }
+
+    /**
+     * Blank the session GUCs on every resolved connection at a worker boundary,
+     * so the session strategy cannot leak one request/job's context into the
+     * next on a pooled connection. A no-op under the transaction strategy.
+     */
+    private function flushSessionContext(): void
+    {
+        if (config('rls.strategy', 'transaction') !== 'session') {
+            return;
+        }
+
+        foreach ($this->app->make('db')->getConnections() as $connection) {
+            if (method_exists($connection, 'resetSessionContext')) {
+                $connection->resetSessionContext();
+            }
+        }
     }
 
     /**
