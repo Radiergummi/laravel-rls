@@ -34,5 +34,7 @@ class RlsServiceProvider extends ServiceProvider
                 $connection->applyRlsContext();
             }
         });
+
+        \Radiergummi\Rls\Schema\RlsSchemaMacros::register();
     }
 }
