@@ -33,10 +33,12 @@ and *where* it touches the code.
   or clear. Currently only safe under `transaction` strategy. *Design §16 failure
   modes.* Touches: `HandlesRlsContext`, provider boot.
 
-- [ ] **Loud collision detection for the connection resolver.** If another
-  package registers a non-`PostgresConnection` resolver and `connection_class`
-  wasn't set to compose with it, throw a clear error instead of silently
-  clobbering. *Design §6.* Touches: `RlsServiceProvider::boot`.
+- [x] **Loud collision detection for the connection resolver.**
+  `RlsServiceProvider::registerConnectionResolver()` throws `ResolverCollision`
+  when a foreign pgsql resolver is already registered and `connection_class` is
+  still the default (a silent clobber), guiding the user to compose instead. Our
+  own resolver is tracked by identity so re-registration isn't a false positive.
+  *Design §6.*
 
 - [ ] **Multi-connection / read-replica context.** Context is injected on the
   connection that runs the query; a read replica connection needs the same

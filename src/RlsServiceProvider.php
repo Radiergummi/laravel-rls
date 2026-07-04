@@ -2,13 +2,17 @@
 
 namespace Radiergummi\LaravelRls;
 
+use Closure;
 use Illuminate\Database\Connection;
 use Illuminate\Support\ServiceProvider;
 use Radiergummi\LaravelRls\Context\RlsManager;
 use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
+use Radiergummi\LaravelRls\Exceptions\ResolverCollision;
 
 class RlsServiceProvider extends ServiceProvider
 {
+    /** The pgsql resolver we registered, tracked so we recognise our own. */
+    private static ?Closure $ownResolver = null;
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/rls.php', 'rls');
@@ -26,14 +30,7 @@ class RlsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Registered in boot() (not register()) so it wins over other pgsql
-        // connection packages that register their resolver in boot(). Point
-        // rls.connection_class at a class extending theirs to compose.
-        Connection::resolverFor('pgsql', function ($pdo, $database, $prefix, $config) {
-            $class = config('rls.connection_class', RlsPostgresConnection::class);
-
-            return new $class($pdo, $database, $prefix, $config);
-        });
+        $this->registerConnectionResolver();
 
         $manager = $this->app->make('rls');
 
@@ -103,5 +100,44 @@ class RlsServiceProvider extends ServiceProvider
                 }
             });
         }
+    }
+
+    /**
+     * Register our pgsql connection resolver, refusing to silently clobber
+     * another package's resolver. Registered from boot() (not register()) so we
+     * win over packages that register in boot(); to compose with such a package,
+     * point rls.connection_class at a class extending theirs.
+     *
+     * @internal
+     */
+    public function registerConnectionResolver(): void
+    {
+        $configured = config('rls.connection_class', RlsPostgresConnection::class);
+
+        if (self::detectResolverCollision(Connection::getResolver('pgsql'), self::$ownResolver, $configured)) {
+            throw ResolverCollision::forDriver('pgsql');
+        }
+
+        self::$ownResolver = function ($pdo, $database, $prefix, $config) {
+            $class = config('rls.connection_class', RlsPostgresConnection::class);
+
+            return new $class($pdo, $database, $prefix, $config);
+        };
+
+        Connection::resolverFor('pgsql', self::$ownResolver);
+    }
+
+    /**
+     * A collision is a foreign resolver already in place (not our own, tracked
+     * by identity) while connection_class is still the default — meaning we
+     * would overwrite the other package rather than compose with it.
+     *
+     * @internal
+     */
+    public static function detectResolverCollision(?Closure $existing, ?Closure $own, string $configured): bool
+    {
+        return $existing !== null
+            && $existing !== $own
+            && $configured === RlsPostgresConnection::class;
     }
 }
