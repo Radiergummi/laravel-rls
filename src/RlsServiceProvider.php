@@ -40,5 +40,25 @@ class RlsServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Context::dehydrating(
             fn ($context) => RlsManager::stripBypassOnDehydrate($context),
         );
+
+        if (config('rls.role_model') === 'restricted') {
+            $manager->setBypassHandler(function (string $reason, \Closure $callback) {
+                $admin = config('rls.admin_connection');
+
+                if ($admin === null) {
+                    throw \Radiergummi\Rls\Exceptions\AdminConnectionRequired::forReason($reason);
+                }
+
+                $db = $this->app->make('db');
+                $previous = $db->getDefaultConnection();
+                $db->setDefaultConnection($admin);
+
+                try {
+                    return $callback();
+                } finally {
+                    $db->setDefaultConnection($previous);
+                }
+            });
+        }
     }
 }

@@ -11,11 +11,24 @@ class RlsManager
 
     private ?Closure $sync = null;
 
+    private ?Closure $bypassHandler = null;
+
     public function __construct(private readonly Repository $context) {}
 
     public function setSyncCallback(?Closure $sync): void
     {
         $this->sync = $sync;
+    }
+
+    /**
+     * Override how bypass scopes (system()/withoutRls()) are handled. When
+     * unset, bypass pushes a bypass context (owner mode, GUC-driven). In
+     * restricted mode the provider installs a handler that routes the callback
+     * to the admin connection instead.
+     */
+    public function setBypassHandler(?Closure $handler): void
+    {
+        $this->bypassHandler = $handler;
     }
 
     public function push(RlsContext $context): void
@@ -68,6 +81,10 @@ class RlsManager
 
     public function withoutRls(string $reason, Closure $callback): mixed
     {
+        if ($this->bypassHandler !== null) {
+            return ($this->bypassHandler)($reason, $callback);
+        }
+
         return $this->enter(RlsContext::bypass($reason), $callback);
     }
 
