@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Context;
 
-final class RlsContext
+final readonly class RlsContext
 {
     private function __construct(
-        private readonly array $values,
-        private readonly bool $bypass = false,
-        private readonly ?string $reason = null,
+        private array $values,
+        private bool $bypass = false,
+        private ?string $reason = null,
     ) {}
 
     public static function make(array $values): self

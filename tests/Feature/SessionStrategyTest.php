@@ -1,9 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
+use Illuminate\Database\LostConnectionException;
+use Illuminate\Log\Context\Repository;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase;
+use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Support\RlsFunctions;
@@ -50,6 +56,7 @@ class SessionStrategyTest extends TestCase
     {
         // Session GUC persists on the connection; reset it between tests.
         DB::statement("select set_config('app.tenant_id', '', false)");
+        DB::statement("select set_config('app.active', '', false)");
         Rls::forget();
         parent::tearDown();
     }
@@ -71,11 +78,16 @@ class SessionStrategyTest extends TestCase
         Rls::actingAs(['tenant_id' => 'to-be-cleared']);
         $this->assertSame('to-be-cleared', DB::selectOne("select rls.context('tenant_id') as v")->v);
 
-        DB::connection()->resetSessionContext();
+        $connection = DB::connection();
+        $this->assertInstanceOf(RlsPostgresConnection::class, $connection);
+        $connection->resetSessionContext();
 
         $this->assertNull(DB::selectOne("select rls.context('tenant_id') as v")->v);
     }
 
+    /**
+     * @throws LostConnectionException
+     */
     public function test_reconnect_reestablishes_session_context(): void
     {
         Rls::actingAs(['tenant_id' => 'survives-reconnect']);
@@ -85,6 +97,24 @@ class SessionStrategyTest extends TestCase
         DB::connection()->reconnect();
 
         $this->assertSame('survives-reconnect', DB::selectOne("select rls.context('tenant_id') as v")->v);
+    }
+
+    public function test_boolean_false_context_serializes_to_a_boolean_literal_not_null(): void
+    {
+        // Regression: (string) false is '', which rls.context() reads as NULL —
+        // collapsing a `false` scope into "no context" and silently mis-scoping.
+        Rls::actingAs(['active' => false]);
+
+        $this->assertSame(
+            'false',
+            DB::selectOne("select rls.context('active') as v")->v,
+            'false must not collapse to an empty GUC (NULL)',
+        );
+        $this->assertSame(
+            'false',
+            DB::selectOne("select rls.context('active')::boolean::text as v")->v,
+            'the GUC must cast to boolean false',
+        );
     }
 
     public function test_worker_boundary_flushes_a_session_guc_left_by_a_prior_request(): void
@@ -97,7 +127,7 @@ class SessionStrategyTest extends TestCase
         // Simulate an Octane/worker scope reset: the scoped context stack is
         // discarded, but the persistent connection keeps its session GUC — so
         // the leak canary sees an empty stack and cannot catch this.
-        app(\Illuminate\Log\Context\Repository::class)->forget('rls');
+        app(Repository::class)->forget('rls');
         $this->assertFalse(Rls::hasContext());
         $this->assertSame(
             'req-a-tenant',
@@ -106,7 +136,7 @@ class SessionStrategyTest extends TestCase
         );
 
         // The boundary flush clears it before the next request/job runs.
-        event(new \Illuminate\Queue\Events\Looping('pgsql', 'default'));
+        event(new Looping('pgsql', 'default'));
 
         $this->assertNull(DB::selectOne("select rls.context('tenant_id') as v")->v);
     }

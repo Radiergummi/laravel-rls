@@ -1,0 +1,21 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+    - vendor/phpstan/phpstan-mockery/extension.neon
+
+parameters:
+    level: 5
+    treatPhpDocTypesAsCertain: false
+    checkMissingCallableSignature: true
+    reportIgnoresWithoutComments: true
+    checkUninitializedProperties: true
+    checkDynamicProperties: true
+
+    paths:
+        - src
+        - tests
+    tmpDir: vendor/.cache/phpstan
+
+    editorUrl: 'phpstorm://open?file=%%file%%&line=%%line%%'
+    editorUrlTitle: '%%relFile%%:%%line%%'

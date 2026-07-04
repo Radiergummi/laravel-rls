@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Radiergummi\LaravelRls\Support\RlsFunctions;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         RlsFunctions::install();

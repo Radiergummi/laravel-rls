@@ -1,19 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Context;
 
+use Illuminate\Support\Str;
+use Stringable;
+
 /**
- * Declares the app's context dimensions and their Postgres types, used to
- * generate typed SQL helpers (rls.tenant_id()) and typed PHP accessors.
+ * Declares the app's context dimensions and their Postgres types, used to generate typed SQL
+ * helpers (rls.tenant_id()) and typed PHP accessors.
  */
 class ContextSchema
 {
-    /** @var array<string, string> name => pg type */
+    /**
+     * name => pg type
+     *
+     * @var array<string, string>
+     */
     private array $dimensions = [];
 
     public function uuid(string $name): self
     {
         return $this->add($name, 'uuid');
+    }
+
+    private function add(string $name, string $type): self
+    {
+        $this->dimensions[$name] = $type;
+
+        return $this;
     }
 
     public function integer(string $name): self
@@ -42,8 +58,9 @@ class ContextSchema
     }
 
     /**
-     * Whether the given value is a well-formed instance of the dimension's
-     * declared Postgres type. Undeclared dimensions are unconstrained.
+     * Whether the given value is a well-formed instance of the dimension's declared Postgres type.
+     *
+     * Undeclared dimensions are unconstrained.
      */
     public function matches(string $name, mixed $value): bool
     {
@@ -54,26 +71,44 @@ class ContextSchema
         }
 
         return match ($type) {
-            'uuid' => ($value instanceof \Stringable || is_string($value))
-                && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', (string) $value) === 1,
-            'integer', 'bigint' => is_int($value)
-                || (is_string($value) && preg_match('/^-?\d+$/', $value) === 1),
+            'uuid' => ($value instanceof Stringable || is_string($value))
+                && Str::isUuid((string) $value),
+            // Range-check against the declared Postgres integer width: a value that overflows
+            // int4/int8 would pass a shape-only check but throw on the ::integer/::bigint cast in
+            // every query. filter_var's default max on 64-bit PHP is int8's max, so a bare
+            // validating covers bigint.
+            'integer' => filter_var($value, FILTER_VALIDATE_INT, [
+                'options' => [
+                    'min_range' => -2147483648,
+                    'max_range' => 2147483647,
+                ],
+            ]) !== false,
+            'bigint' => filter_var($value, FILTER_VALIDATE_INT) !== false,
             'boolean' => is_bool($value)
-                || in_array($value, [0, 1, '0', '1', 'true', 'false', 't', 'f'], true),
-            'text' => is_string($value) || is_int($value) || is_float($value) || $value instanceof \Stringable,
+                || in_array(
+                    $value,
+                    [0, 1, '0', '1', 'true', 'false', 't', 'f'],
+                    true,
+                ),
+            'text' => is_string($value)
+                || is_int($value)
+                || is_float($value)
+                || $value instanceof Stringable,
             default => true,
         };
     }
 
-    /** @return array<string, string> */
+    /**
+     * @return array<string, string>
+     */
     public function dimensions(): array
     {
         return $this->dimensions;
     }
 
     /**
-     * Generate a typed helper per dimension, e.g.
-     * rls.tenant_id() returns uuid := rls.context('tenant_id')::uuid.
+     * Generate a typed helper per dimension, e.g., `rls.tenant_id()` returns
+     * `uuid := rls.context('tenant_id')::uuid`.
      *
      * @return array<int, string>
      */
@@ -82,18 +117,16 @@ class ContextSchema
         $statements = [];
 
         foreach ($this->dimensions as $name => $type) {
-            $statements[] = "create or replace function rls.{$name}() " .
-                "returns {$type} language sql stable as $$ " .
-                "select rls.context('{$name}')::{$type} $$";
+            $statements[] = sprintf(
+                'create or replace function rls.%s() returns %s language sql stable as $$'
+                . " select rls.context('%s')::%s $$",
+                $name,
+                $type,
+                $name,
+                $type,
+            );
         }
 
         return $statements;
-    }
-
-    private function add(string $name, string $type): self
-    {
-        $this->dimensions[$name] = $type;
-
-        return $this;
     }
 }

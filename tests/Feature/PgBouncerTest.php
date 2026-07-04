@@ -1,12 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase;
+use PDO;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Support\RlsFunctions;
+use Throwable;
 
 /**
  * Proves the transaction strategy against a real PgBouncer in transaction
@@ -41,7 +45,7 @@ class PgBouncerTest extends TestCase
             // Transaction pooling cannot carry server-side prepared statements
             // across the pool; emulate them client-side. (Alternatively
             // PgBouncer >= 1.21 with max_prepared_statements set.)
-            'options' => [\PDO::ATTR_EMULATE_PREPARES => true],
+            'options' => [PDO::ATTR_EMULATE_PREPARES => true],
         ]);
     }
 
@@ -51,7 +55,7 @@ class PgBouncerTest extends TestCase
 
         try {
             DB::connection()->getPdo();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->markTestSkipped('PgBouncer not reachable on 127.0.0.1:6432: ' . $e->getMessage());
         }
 
@@ -81,14 +85,14 @@ class PgBouncerTest extends TestCase
     public function test_each_transaction_gets_its_own_context_under_pooling(): void
     {
         Rls::actingAs(['tenant_id' => 'first']);
-        DB::transaction(fn () => $this->assertSame(
+        DB::transaction(fn() => $this->assertSame(
             'first',
             DB::selectOne("select rls.context('tenant_id') as v")->v,
         ));
         Rls::forget();
 
         Rls::actingAs(['tenant_id' => 'second']);
-        DB::transaction(fn () => $this->assertSame(
+        DB::transaction(fn() => $this->assertSame(
             'second',
             DB::selectOne("select rls.context('tenant_id') as v")->v,
         ));
@@ -98,7 +102,7 @@ class PgBouncerTest extends TestCase
     {
         Rls::actingAs(['tenant_id' => 'ephemeral']);
 
-        DB::transaction(fn () => $this->assertSame(
+        DB::transaction(fn() => $this->assertSame(
             'ephemeral',
             DB::selectOne("select rls.context('tenant_id') as v")->v,
         ));

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
@@ -10,13 +12,13 @@ class SyncCommandTest extends TestCase
 {
     public function test_generates_typed_helper_from_the_declared_schema(): void
     {
-        Rls::defineContext(fn ($c) => $c->uuid('tenant_id'));
+        Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
 
         $this->artisan('rls:sync')->assertExitCode(0);
 
         $exists = DB::selectOne(
-            "select 1 as e from pg_proc p join pg_namespace n on n.oid = p.pronamespace " .
-            "where n.nspname = 'rls' and p.proname = 'tenant_id'",
+            'select 1 as e from pg_proc p join pg_namespace n on n.oid = p.pronamespace '
+            . "where n.nspname = 'rls' and p.proname = 'tenant_id'",
         );
         $this->assertNotNull($exists, 'expected rls.tenant_id() to be created');
     }

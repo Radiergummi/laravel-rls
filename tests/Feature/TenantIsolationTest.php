@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
@@ -20,9 +22,13 @@ class TenantIsolationTest extends TestCase
     {
         parent::setUp();
 
+        // tenants is not RLS-scoped, so create the registry rows directly (and
+        // in setUp's body, not a closure, so they read as initialized). Only the
+        // scoped documents need the bypass.
+        $this->a = Tenant::factory()->createOne();
+        $this->b = Tenant::factory()->createOne();
+
         $this->withoutRls('seed', function () {
-            $this->a = Tenant::factory()->create();
-            $this->b = Tenant::factory()->create();
             Document::factory()->count(2)->create(['tenant_id' => $this->a->id]);
             Document::factory()->count(3)->create(['tenant_id' => $this->b->id]);
         });

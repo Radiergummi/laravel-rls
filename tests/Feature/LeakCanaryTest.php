@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Queue\Events\Looping;
@@ -14,22 +16,22 @@ class LeakCanaryTest extends TestCase
 {
     public function test_logs_and_clears_a_leaked_context(): void
     {
-        Log::spy();
+        $log = Log::spy();
         Rls::actingAs(['tenant_id' => 'leaked-from-previous-job']);
 
         app(RlsManager::class)->checkForLeak('job');
 
-        Log::shouldHaveReceived('critical')->once();
+        $log->shouldHaveReceived('critical')->once();
         $this->assertFalse(Rls::hasContext(), 'leaked context must be cleared before the new unit of work runs');
     }
 
     public function test_clean_stack_is_silent(): void
     {
-        Log::spy();
+        $log = Log::spy();
 
         app(RlsManager::class)->checkForLeak('job');
 
-        Log::shouldNotHaveReceived('critical');
+        $log->shouldNotHaveReceived('critical');
     }
 
     public function test_throw_mode_raises_and_still_clears(): void
@@ -48,12 +50,12 @@ class LeakCanaryTest extends TestCase
     public function test_off_mode_does_nothing(): void
     {
         config(['rls.leak_canary' => 'off']);
-        Log::spy();
+        $log = Log::spy();
         Rls::actingAs(['tenant_id' => 'leaked']);
 
         app(RlsManager::class)->checkForLeak('job');
 
-        Log::shouldNotHaveReceived('critical');
+        $log->shouldNotHaveReceived('critical');
         Rls::forget();
     }
 

@@ -1,11 +1,11 @@
 # laravel-rls
 
-PostgreSQL Row-Level Security as a first-class, ergonomic Laravel feature. Set
-tenant context once (`Rls::actingAs(...)`) and the database itself confines every
-read *and* write — so a forgotten `WHERE tenant_id = …` can't leak data.
+PostgreSQL Row-Level Security as a first-class, ergonomic Laravel feature. Set your scope context once
+(`Rls::actingAs(...)`) — scoped by a tenant, an organization, a region, or any dimension you declare — and the database
+itself confines every read *and* write, so a forgotten `WHERE tenant_id = …` can't leak data.
 
 > **Status: proof of concept.** This is a validated PoC, not a production
-> release. The architecture works end-to-end against real PostgreSQL (56 tests),
+> release. The architecture works end-to-end against real PostgreSQL (97 tests),
 > but APIs are unstable and several production concerns are still open — see
 > [`docs/BACKLOG.md`](docs/BACKLOG.md).
 
@@ -32,49 +32,68 @@ Schema::create('documents', function (Blueprint $table) {
 });                                   // isolation policy with USING + WITH CHECK
 ```
 
-Policies reference `rls.tenant_id()` / `rls.context('tenant_id')`, which read
-transaction-local context the connection injects transparently — the same
-abstraction Supabase gives you with `auth.uid()`.
+Policies reference `rls.tenant_id()` / `rls.context('tenant_id')`, which read transaction-local context the connection
+injects transparently — the same abstraction Supabase gives you with `auth.uid()`.
+
+## Any dimension, not just tenants
+
+The context is a bag of generic named dimensions — `tenant_id` is only the running example. Declare whatever your app
+scopes by and everything downstream (`scopedBy`, `rls:check`, the test helpers) behaves the same:
+
+```php
+// Declare your dimensions (opt-in — enables typed accessors + value validation)
+Rls::defineContext(fn ($c) => $c->uuid('org_id')->integer('region_id'));
+
+// Scope tables by any column / type
+$table->scopedBy('org_id');
+$table->scopedBy('region_id', type: 'integer');
+
+// Establish and assert against them
+Rls::actingAs(['org_id' => $org->id, 'region_id' => 3], fn () => Report::all());
+$this->assertRlsIsolates(Report::class, from: $a, cannotSee: $b, dimension: 'org_id');
+```
+
+`rls:check` audits every RLS-managed table by the policies it carries, not by a `tenant_id` column, so non-tenant
+dimensions are covered too.
 
 ## Proven in the PoC
 
-| Area | What works |
-|------|-----------|
-| **Context** | Immutable, stack-based, generic named dimensions; backed by Laravel `Context` |
-| **Injection** | Transaction-local `set_config()` (bound param), injected at the transaction boundary; mid-transaction re-inject makes it testable under `RefreshDatabase` |
-| **Isolation** | Reads scoped, writes confined (`WITH CHECK`), fail-closed with no context; RESTRICTIVE isolation policy can't be widened by a permissive feature policy |
-| **Role models** | `owner` (FORCE, zero-infra) and `restricted` (non-owner runtime role, real isolation even with FORCE off) |
-| **Bypass** | `owner`: GUC escape clause; `restricted`: routes to an admin connection, hard-fails without one |
-| **Jobs** | Tenant context rides a real `queue:work` dispatch→worker cycle; bypass is stripped at dehydrate |
-| **Auth** | `Rls::resolveContextUsing()` + `Authenticated` event auto-establishes context |
-| **Boundary modes** | `wrap` (default), `explicit` (fail-loud `MissingContextBoundary`), request middleware |
-| **Strategies** | `transaction` (default, pooling-safe) and `session` (perf, direct connections) |
-| **Interop** | Composes with `tpetry/laravel-postgresql-enhanced` (configurable base class + trait) |
-| **Tooling** | `rls:check` (CI coverage audit), `rls:audit` (bypass call-site scan), rich test helpers + leak canary |
+| Area               | What works                                                                                                                                                |
+|--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Context**        | Immutable, stack-based, generic named dimensions; backed by Laravel `Context`                                                                             |
+| **Injection**      | Transaction-local `set_config()` (bound param), injected at the transaction boundary; mid-transaction re-inject makes it testable under `RefreshDatabase` |
+| **Isolation**      | Reads scoped, writes confined (`WITH CHECK`), fail-closed with no context; RESTRICTIVE isolation policy can't be widened by a permissive feature policy   |
+| **Role models**    | `owner` (FORCE, zero-infra) and `restricted` (non-owner runtime role, real isolation even with FORCE off)                                                 |
+| **Bypass**         | `owner`: GUC escape clause; `restricted`: routes to an admin connection, hard-fails without one                                                           |
+| **Jobs**           | Tenant context rides a real `queue:work` dispatch→worker cycle; bypass is stripped at dehydrate                                                           |
+| **Auth**           | `Rls::resolveContextUsing()` + `Authenticated` event auto-establishes context                                                                             |
+| **Boundary modes** | `wrap` (default), `explicit` (fail-loud `MissingContextBoundary`), request middleware                                                                     |
+| **Strategies**     | `transaction` (default, pooling-safe) and `session` (perf, direct connections)                                                                            |
+| **Interop**        | Composes with `tpetry/laravel-postgresql-enhanced` (configurable base class + trait)                                                                      |
+| **Tooling**        | `rls:check` (CI coverage audit), `rls:audit` (bypass call-site scan), rich test helpers + leak canary                                                     |
 
-See [`docs/superpowers/specs/2026-07-04-laravel-postgresql-rls-design.md`](docs/superpowers/specs/2026-07-04-laravel-postgresql-rls-design.md)
+See [
+`docs/superpowers/specs/2026-07-04-laravel-postgresql-rls-design.md`](docs/superpowers/specs/2026-07-04-laravel-postgresql-rls-design.md)
 for the full design and threat model.
 
 ## Configuration (`config/rls.php`)
 
-| Key | Default | Purpose |
-|-----|---------|---------|
-| `prefix` | `app.` | GUC namespace |
-| `role_model` | `owner` | `owner` (FORCE) or `restricted` (separate admin connection) |
-| `admin_connection` | `null` | Privileged connection for bypass in restricted mode |
-| `strategy` | `transaction` | `transaction` (pooling-safe) or `session` (perf) |
-| `boundary` | `wrap` | `wrap`, `explicit`, or `request` |
-| `on_missing_context` | `closed` | `closed` (DB zero rows) or `throw` (fail-loud in PHP) |
-| `connection_class` | `RlsPostgresConnection` | Set to a class extending another package's connection to compose |
+| Key                  | Default                 | Purpose                                                          |
+|----------------------|-------------------------|------------------------------------------------------------------|
+| `prefix`             | `app.`                  | GUC namespace                                                    |
+| `role_model`         | `owner`                 | `owner` (FORCE) or `restricted` (separate admin connection)      |
+| `admin_connection`   | `null`                  | Privileged connection for bypass in restricted mode              |
+| `strategy`           | `transaction`           | `transaction` (pooling-safe) or `session` (perf)                 |
+| `boundary`           | `wrap`                  | `wrap`, `explicit`, or `request`                                 |
+| `on_missing_context` | `closed`                | `closed` (DB zero rows) or `throw` (fail-loud in PHP)            |
+| `connection_class`   | `RlsPostgresConnection` | Set to a class extending another package's connection to compose |
 
 ## Using beneath a tenancy package
 
-`laravel-rls` isn't a tenancy framework — it's the database-enforcement layer
-that slots *underneath* one. If you already use stancl/tenancy or spatie's
-multitenancy for routing, identification, and per-tenant resources, keep them.
-Point `resolveContextUsing()` at whatever they already resolved, and RLS becomes
-the backstop that makes cross-tenant reads impossible at the database, not just
-unlikely in your query builder.
+`laravel-rls` isn't a tenancy framework — it's the database-enforcement layer that slots *underneath* one. If you
+already use stancl/tenancy or spatie's multitenancy for routing, identification, and per-tenant resources, keep them.
+Point `resolveContextUsing()` at whatever they already resolved, and RLS becomes the backstop that makes cross-tenant
+reads impossible at the database, not just unlikely in your query builder.
 
 Put this in your app-side `RlsServiceProvider` (published by `rls:install`):
 
@@ -91,25 +110,23 @@ Rls::resolveContextUsing(fn () => Tenant::current()
 ```
 
 Those packages switch tenants via their own events rather than Laravel's
-`Authenticated` event, so also re-establish context on their tenant-initialized
-hook (e.g. stancl's `TenancyInitialized`) with `Rls::actingAs(...)`. A
-first-class bridge for this is on the backlog; the recipe above works today.
+`Authenticated` event, so also re-establish context on their tenant-initialized hook (e.g. stancl's
+`TenancyInitialized`) with `Rls::actingAs(...)`. A first-class bridge for this is on the backlog; the recipe above works
+today.
 
 ## Key findings (things the PoC taught us)
 
-- **RLS is a no-op for the table owner unless FORCE** — and superusers/BYPASSRLS
-  roles skip it entirely. Tests *must* connect as a non-superuser or they falsely
-  pass. `owner` mode stops developer mistakes; only `restricted` mode contains a
-  compromised credential or SQL injection.
-- **A RESTRICTIVE-only table shows nothing** — you need a permissive base policy
-  too. `scopedBy()` emits both (permissive `USING (true)` + RESTRICTIVE isolation).
-- **Transaction-local GUCs have no "unset"** — context pop blanks keys to `''`,
-  and `rls.context()` reads `nullif(..., '')` as NULL (fail-closed).
-- **Composability needs care** — `run(): mixed` return type, capability detection
-  (not `instanceof`), and registering the resolver in `boot()` to win the resolver
-  race with packages like tpetry.
-- **The fail-loud guard must skip DDL** (or it trips `migrate:fresh`), and PDO
-  connects lazily (introspection needs `select()` + a re-entry flag, not `getPdo()`).
+- **RLS is a no-op for the table owner unless FORCE** — and superusers/BYPASSRLS roles skip it entirely. Tests *must*
+  connect as a non-superuser or they falsely pass. `owner` mode stops developer mistakes; only `restricted` mode
+  contains a compromised credential or SQL injection.
+- **A RESTRICTIVE-only table shows nothing** — you need a permissive base policy too. `scopedBy()` emits both
+  (permissive `USING (true)` + RESTRICTIVE isolation).
+- **Transaction-local GUCs have no "unset"** — context pop blanks keys to `''`, and `rls.context()` reads
+  `nullif(..., '')` as NULL (fail-closed).
+- **Composability needs care** — `run(): mixed` return type, capability detection (not `instanceof`), and registering
+  the resolver in `boot()` to win the resolver race with packages like tpetry.
+- **The fail-loud guard must skip DDL** (or it trips `migrate:fresh`), and PDO connects lazily (introspection needs
+  `select()` + a re-entry flag, not `getPdo()`).
 
 ## Development
 

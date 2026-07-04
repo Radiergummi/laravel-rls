@@ -1,0 +1,120 @@
+{
+  "preset": "per",
+  "rules": {
+    "attribute_block_no_spaces": false,
+    "blank_line_before_statement": {
+      "statements": [
+        "break",
+        "continue",
+        "for",
+        "foreach",
+        "if",
+        "return",
+        "switch",
+        "throw",
+        "try",
+        "while"
+      ]
+    },
+    "declare_strict_types": true,
+    "fully_qualified_strict_types": true,
+    "global_namespace_import": {
+      "import_classes": true,
+      "import_constants": true,
+      "import_functions": true
+    },
+    "list_syntax": {
+      "syntax": "short"
+    },
+    "phpdoc_to_comment": {
+      "allow_before_return_statement": true,
+      "ignored_tags": [
+        "copyright",
+        "noinspection",
+        "see"
+      ]
+    },
+    "new_with_parentheses": {
+      "anonymous_class": true,
+      "named_class": true
+    },
+    "no_blank_lines_after_phpdoc": true,
+    "no_empty_phpdoc": true,
+    "no_short_bool_cast": true,
+    "no_superfluous_elseif": true,
+    "no_superfluous_phpdoc_tags": {
+      "allow_mixed": true
+    },
+    "no_trailing_comma_in_singleline": true,
+    "no_unneeded_control_parentheses": true,
+    "no_unneeded_import_alias": true,
+    "no_useless_else": true,
+    "no_useless_nullsafe_operator": true,
+    "no_useless_return": true,
+    "no_useless_sprintf": true,
+    "ordered_imports": {
+      "sort_algorithm": "alpha",
+      "imports_order": [
+        "class",
+        "function",
+        "const"
+      ]
+    },
+    "phpdoc_align": {
+      "tags": [
+        "method",
+        "param",
+        "property",
+        "property-read",
+        "property-write",
+        "return",
+        "throws",
+        "var"
+      ]
+    },
+    "phpdoc_no_alias_tag": {
+      "replacements": {
+        "type": "var",
+        "link": "see",
+        "returns": "return",
+        "psalm-template": "var",
+        "psalm-type": "phpstan-type",
+        "psalm-var": "phpstan-type",
+        "psalm-return": "return",
+        "psalm-param": "param"
+      }
+    },
+    "phpdoc_no_empty_return": true,
+    "phpdoc_no_useless_inheritdoc": true,
+    "phpdoc_order": {
+      "order": [
+        "param",
+        "return",
+        "throws"
+      ]
+    },
+    "phpdoc_order_by_value": {
+      "annotations": [
+        "property",
+        "property-read",
+        "property-write",
+        "throws"
+      ]
+    },
+    "phpdoc_scalar": true,
+    "phpdoc_separation": true,
+    "phpdoc_single_line_var_spacing": true,
+    "phpdoc_trim": true,
+    "phpdoc_trim_consecutive_blank_line_separation": true,
+    "phpdoc_types_order": true,
+    "single_import_per_statement": true,
+    "single_line_comment_style": true,
+    "single_quote": true,
+    "standardize_not_equals": true,
+    "yoda_style": {
+      "equal": false,
+      "identical": false,
+      "less_and_greater": false
+    }
+  }
+}

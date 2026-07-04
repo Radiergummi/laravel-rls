@@ -11,7 +11,19 @@
     "require-dev": {
         "orchestra/testbench": "^9.0|^10.0",
         "phpunit/phpunit": "^11.0",
-        "tpetry/laravel-postgresql-enhanced": "^3.7"
+        "tpetry/laravel-postgresql-enhanced": "^3.7",
+        "laravel/pint": "^1.29",
+        "phpstan/phpstan": "^2.2",
+        "larastan/larastan": "^3.10",
+        "ext-pdo": "*",
+        "laravel/octane": "^2.17",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-mockery": "^2.0"
+    },
+    "scripts": {
+        "lint": "phpstan analyse --memory-limit=1G --configuration=phpstan.neon",
+        "format": "pint --parallel --max-processes=auto --cache-file=vendor/.cache/pint.json",
+        "fmt": "@format"
     },
     "autoload": {
         "psr-4": { "Radiergummi\\LaravelRls\\": "src/" }

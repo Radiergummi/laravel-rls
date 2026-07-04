@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Unit;
 
 use Illuminate\Events\Dispatcher;
 use Illuminate\Log\Context\Repository;
 use PHPUnit\Framework\TestCase;
 use Radiergummi\LaravelRls\Context\RlsManager;
+use Radiergummi\LaravelRls\Events\RlsBypassed;
+use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
+use RuntimeException;
 
 class RlsManagerTest extends TestCase
 {
@@ -28,6 +33,7 @@ class RlsManagerTest extends TestCase
         $seen = null;
         $result = $m->actingAs(['tenant_id' => '9'], function () use ($m, &$seen) {
             $seen = $m->get('tenant_id');
+
             return 'ok';
         });
         $this->assertSame('9', $seen);
@@ -38,9 +44,10 @@ class RlsManagerTest extends TestCase
     public function test_acting_as_pops_even_on_exception(): void
     {
         $m = $this->manager();
+
         try {
-            $m->actingAs(['tenant_id' => '9'], fn () => throw new \RuntimeException('boom'));
-        } catch (\RuntimeException) {
+            $m->actingAs(['tenant_id' => '9'], fn() => throw new RuntimeException('boom'));
+        } catch (RuntimeException) {
         }
         $this->assertFalse($m->hasContext());
     }
@@ -85,9 +92,9 @@ class RlsManagerTest extends TestCase
     public function test_rejects_value_violating_declared_type(): void
     {
         $m = $this->manager();
-        $m->defineContext(fn ($c) => $c->uuid('tenant_id'));
+        $m->defineContext(fn($c) => $c->uuid('tenant_id'));
 
-        $this->expectException(\Radiergummi\LaravelRls\Exceptions\InvalidContextValue::class);
+        $this->expectException(InvalidContextValue::class);
 
         $m->actingAs(['tenant_id' => 'not-a-uuid']);
     }
@@ -95,7 +102,7 @@ class RlsManagerTest extends TestCase
     public function test_accepts_value_matching_declared_type(): void
     {
         $m = $this->manager();
-        $m->defineContext(fn ($c) => $c->uuid('tenant_id'));
+        $m->defineContext(fn($c) => $c->uuid('tenant_id'));
 
         $m->actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111']);
 
@@ -105,7 +112,7 @@ class RlsManagerTest extends TestCase
     public function test_undeclared_dimension_is_not_validated(): void
     {
         $m = $this->manager();
-        $m->defineContext(fn ($c) => $c->uuid('tenant_id'));
+        $m->defineContext(fn($c) => $c->uuid('tenant_id'));
 
         $m->actingAs([
             'tenant_id' => '11111111-1111-1111-1111-111111111111',
@@ -118,9 +125,9 @@ class RlsManagerTest extends TestCase
     public function test_rejects_non_integer_for_integer_dimension(): void
     {
         $m = $this->manager();
-        $m->defineContext(fn ($c) => $c->integer('org_id'));
+        $m->defineContext(fn($c) => $c->integer('org_id'));
 
-        $this->expectException(\Radiergummi\LaravelRls\Exceptions\InvalidContextValue::class);
+        $this->expectException(InvalidContextValue::class);
 
         $m->actingAs(['org_id' => 'abc']);
     }
@@ -128,9 +135,9 @@ class RlsManagerTest extends TestCase
     public function test_set_also_validates(): void
     {
         $m = $this->manager();
-        $m->defineContext(fn ($c) => $c->uuid('tenant_id'));
+        $m->defineContext(fn($c) => $c->uuid('tenant_id'));
 
-        $this->expectException(\Radiergummi\LaravelRls\Exceptions\InvalidContextValue::class);
+        $this->expectException(InvalidContextValue::class);
 
         $m->set('tenant_id', 'nope');
     }
@@ -149,16 +156,16 @@ class RlsManagerTest extends TestCase
         $events = new Dispatcher();
         $captured = null;
         $events->listen(
-            \Radiergummi\LaravelRls\Events\RlsBypassed::class,
+            RlsBypassed::class,
             function ($event) use (&$captured) {
                 $captured = $event;
             },
         );
 
         $m = new RlsManager(new Repository(new Dispatcher()), $events);
-        $m->withoutRls('nightly-report', fn () => null);
+        $m->withoutRls('nightly-report', fn() => null);
 
-        $this->assertInstanceOf(\Radiergummi\LaravelRls\Events\RlsBypassed::class, $captured);
+        $this->assertInstanceOf(RlsBypassed::class, $captured);
         $this->assertSame('nightly-report', $captured->reason);
     }
 }

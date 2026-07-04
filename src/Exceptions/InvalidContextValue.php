@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Exceptions;
 
 use InvalidArgumentException;
@@ -14,10 +16,10 @@ class InvalidContextValue extends InvalidArgumentException
             : get_debug_type($value);
 
         return new self(
-            "RLS context value for '{$name}' is not a valid {$type}: '{$given}'. " .
-            'Values are validated against the declared context schema before they ' .
-            'can reach the database (a malformed value would otherwise error on ' .
-            'every query).',
+            "RLS context value for '{$name}' is not a valid {$type}: '{$given}'. "
+            . 'Values are validated against the declared context schema before they '
+            . 'can reach the database (a malformed value would otherwise error on '
+            . 'every query).',
         );
     }
 }

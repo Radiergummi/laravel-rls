@@ -1,11 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Context;
 
+use BadMethodCallException;
 use Closure;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Log\Context\Repository;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
+use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
+use Radiergummi\LaravelRls\Exceptions\RlsContextLeaked;
+use RuntimeException;
+
+use function config;
 
 class RlsManager
 {
@@ -25,8 +35,35 @@ class RlsManager
     ) {}
 
     /**
-     * Declare the app's context dimensions (opt-in sugar). Enables typed PHP
-     * accessors (Rls::tenantId()) and typed SQL helper generation.
+     * Strip bypass contexts before the context is serialized into a queued job, so a job dispatched
+     * inside a bypass scope never inherits bypass.
+     */
+    public static function stripBypassOnDehydrate(Repository $context): void
+    {
+        $stack = $context->get(self::KEY, []);
+
+        if ($stack === []) {
+            return;
+        }
+
+        $filtered = array_values(
+            array_filter(
+                $stack,
+                static fn(RlsContext $context): bool => ! $context->isBypass(),
+            ),
+        );
+
+        if ($filtered === []) {
+            $context->forget(self::KEY);
+        } else {
+            $context->add(self::KEY, $filtered);
+        }
+    }
+
+    /**
+     * Declare the app's context dimensions (opt-in sugar).
+     *
+     * Enables typed PHP accessors (Rls::tenantId()) and typed SQL helper generation.
      */
     public function defineContext(Closure $callback): void
     {
@@ -40,23 +77,45 @@ class RlsManager
         return $this->schema;
     }
 
-    /** Typed accessors for declared dimensions, e.g. Rls::tenantId(). */
+    /** Typed accessors for declared dimensions, e.g. Rls::tenantId().
+     *
+     * @throws BadMethodCallException
+     */
     public function __call(string $method, array $arguments): mixed
     {
-        $key = \Illuminate\Support\Str::snake($method);
+        $key = Str::snake($method);
 
         if ($this->schema?->has($key)) {
             return $this->get($key);
         }
 
-        throw new \BadMethodCallException(
+        throw new BadMethodCallException(
             "Method {$method}() is not a declared RLS context dimension.",
         );
     }
 
+    public function get(string $key): mixed
+    {
+        return $this->current()?->get($key);
+    }
+
+    public function current(): ?RlsContext
+    {
+        $stack = $this->stack();
+
+        return $stack === [] ? null : $stack[array_key_last($stack)];
+    }
+
+    /** @return list<RlsContext> */
+    private function stack(): array
+    {
+        return $this->context->get(self::KEY, []);
+    }
+
     /**
-     * Register the app's identity -> context mapping. Called from the
-     * publishable RlsServiceProvider.
+     * Register the app's identity -> context mapping.
+     *
+     * Called from the publishable RlsServiceProvider.
      */
     public function resolveContextUsing(Closure $resolver): void
     {
@@ -64,8 +123,12 @@ class RlsManager
     }
 
     /**
-     * Establish context from a freshly authenticated user, using the app's
-     * resolver. A no-op if no resolver is registered or it yields nothing.
+     * Establish context from a freshly authenticated user, using the app's resolver.
+     *
+     * A no-op if no resolver is registered, or it yields nothing.
+     *
+     * @throws InvalidContextValue
+     * @throws RuntimeException
      */
     public function establishFromUser(mixed $user): void
     {
@@ -80,22 +143,10 @@ class RlsManager
         }
     }
 
-    public function setSyncCallback(?Closure $sync): void
-    {
-        $this->sync = $sync;
-    }
-
     /**
-     * Override how bypass scopes (system()/withoutRls()) are handled. When
-     * unset, bypass pushes a bypass context (owner mode, GUC-driven). In
-     * restricted mode the provider installs a handler that routes the callback
-     * to the admin connection instead.
+     * @throws InvalidContextValue
+     * @throws RuntimeException
      */
-    public function setBypassHandler(?Closure $handler): void
-    {
-        $this->bypassHandler = $handler;
-    }
-
     public function push(RlsContext $context): void
     {
         $this->validate($context->values());
@@ -105,8 +156,11 @@ class RlsManager
 
     /**
      * Validate context values against the declared schema before they leave PHP.
-     * A malformed value (e.g. a non-UUID for a uuid dimension) would otherwise
-     * reach Postgres and throw on every query — a cluster-wide failure.
+     *
+     * A malformed value (e.g., a non-UUID for an uuid dimension) would otherwise reach Postgres and
+     * throw on every query — a cluster-wide failure.
+     *
+     * @throws InvalidContextValue
      */
     private function validate(array $values): void
     {
@@ -115,8 +169,16 @@ class RlsManager
         }
 
         foreach ($values as $key => $value) {
+            // null is the fail-closed sentinel (a tenant-less user, a not-yet-set dimension):
+            // it serializes to an empty GUC that rls.context() reads as NULL, yielding zero rows —
+            // safe, not malformed. Validating it would 500 the Authenticated listener for every
+            // such user.
+            if ($value === null) {
+                continue;
+            }
+
             if (! $this->schema->matches($key, $value)) {
-                throw \Radiergummi\LaravelRls\Exceptions\InvalidContextValue::forDimension(
+                throw InvalidContextValue::forDimension(
                     $key,
                     $this->schema->dimensions()[$key],
                     $value,
@@ -125,6 +187,54 @@ class RlsManager
         }
     }
 
+    private function afterChange(): void
+    {
+        if ($this->sync !== null) {
+            ($this->sync)();
+        }
+    }
+
+    public function setSyncCallback(?Closure $sync): void
+    {
+        $this->sync = $sync;
+    }
+
+    /**
+     * Override how bypass scopes (system()/withoutRls()) are handled.
+     *
+     * When unset, bypass pushes a bypass context (owner mode, GUC-driven). In restricted mode the
+     * provider installs a handler that routes the callback to the admin connection instead.
+     */
+    public function setBypassHandler(?Closure $handler): void
+    {
+        $this->bypassHandler = $handler;
+    }
+
+    public function context(): array
+    {
+        return $this->current()?->values() ?? [];
+    }
+
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    public function set(string $key, mixed $value): void
+    {
+        $next = ($this->current() ?? RlsContext::make([]))->with([$key => $value]);
+
+        // Validate before mutating the stack: if the value is invalid, push() would throw *after*
+        // the pop, silently dropping the current frame (and exposing whatever context sits
+        // beneath it).
+        $this->validate($next->values());
+
+        $this->pop();
+        $this->push($next);
+    }
+
+    /**
+     * @throws RuntimeException
+     */
     public function pop(): void
     {
         if ($this->hasContext()) {
@@ -133,120 +243,24 @@ class RlsManager
         $this->afterChange();
     }
 
-    public function current(): ?RlsContext
-    {
-        $stack = $this->stack();
-
-        return $stack === [] ? null : $stack[array_key_last($stack)];
-    }
-
     public function hasContext(): bool
     {
         return $this->stack() !== [];
     }
 
-    public function context(): array
-    {
-        return $this->current()?->values() ?? [];
-    }
-
-    public function get(string $key): mixed
-    {
-        return $this->current()?->get($key);
-    }
-
-    public function set(string $key, mixed $value): void
-    {
-        $current = $this->current();
-        $this->pop();
-        $this->push(($current ?? RlsContext::make([]))->with([$key => $value]));
-    }
-
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
     public function actingAs(array $context, ?Closure $callback = null): mixed
     {
         return $this->enter(RlsContext::make($context), $callback);
     }
 
-    public function withoutRls(string $reason, Closure $callback): mixed
-    {
-        $this->events?->dispatch(new RlsBypassed($reason));
-
-        if ($this->bypassHandler !== null) {
-            return ($this->bypassHandler)($reason, $callback);
-        }
-
-        return $this->enter(RlsContext::bypass($reason), $callback);
-    }
-
-    public function system(string $reason, Closure $callback): mixed
-    {
-        return $this->withoutRls($reason, $callback);
-    }
-
-    public function forget(): void
-    {
-        $this->context->forget(self::KEY);
-        $this->afterChange();
-    }
-
     /**
-     * Runtime leak canary. On long-lived workers (queue, Octane) a context that
-     * was never popped would silently carry over into the next unit of work — a
-     * cross-tenant hazard. Called at each request/job boundary: if the stack is
-     * not empty it clears the stale context and surfaces it per the configured
-     * mode ('log' | 'throw' | 'off').
+     * @throws InvalidContextValue
+     * @throws RuntimeException
      */
-    public function checkForLeak(string $boundary): void
-    {
-        $mode = \config('rls.leak_canary', 'log');
-
-        if ($mode === 'off' || ! $this->hasContext()) {
-            return;
-        }
-
-        $dimensions = array_keys($this->context());
-        $this->forget();
-
-        if ($mode === 'throw') {
-            throw \Radiergummi\LaravelRls\Exceptions\RlsContextLeaked::at($boundary, $dimensions);
-        }
-
-        \Illuminate\Support\Facades\Log::critical(
-            "RLS context leaked into a new {$boundary} and was cleared.",
-            ['boundary' => $boundary, 'dimensions' => $dimensions],
-        );
-    }
-
-    /**
-     * Strip bypass contexts before the context is serialized into a queued
-     * job, so a job dispatched inside a bypass scope never inherits bypass.
-     */
-    public static function stripBypassOnDehydrate(Repository $context): void
-    {
-        $stack = $context->get(self::KEY, []);
-
-        if ($stack === []) {
-            return;
-        }
-
-        $filtered = array_values(array_filter(
-            $stack,
-            fn (RlsContext $c) => ! $c->isBypass(),
-        ));
-
-        if ($filtered === []) {
-            $context->forget(self::KEY);
-        } else {
-            $context->add(self::KEY, $filtered);
-        }
-    }
-
-    /** @return list<RlsContext> */
-    private function stack(): array
-    {
-        return $this->context->get(self::KEY, []);
-    }
-
     private function enter(RlsContext $context, ?Closure $callback): mixed
     {
         $this->push($context);
@@ -262,10 +276,70 @@ class RlsManager
         }
     }
 
-    private function afterChange(): void
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    public function system(string $reason, Closure $callback): mixed
     {
-        if ($this->sync !== null) {
-            ($this->sync)();
+        return $this->withoutRls($reason, $callback);
+    }
+
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    public function withoutRls(string $reason, Closure $callback): mixed
+    {
+        $this->events?->dispatch(new RlsBypassed($reason));
+
+        if ($this->bypassHandler !== null) {
+            return ($this->bypassHandler)($reason, $callback);
         }
+
+        return $this->enter(RlsContext::bypass($reason), $callback);
+    }
+
+    /**
+     * Runtime leak canary. On long-lived workers (queue, Octane) a context that was never popped
+     * would silently carry over into the next unit of work — a cross-tenant hazard. Called at each
+     * request/job boundary: if the stack is not empty, it clears the stale context and surfaces it
+     * per the configured mode ('log' | 'throw' | 'off').
+     *
+     * @throws RlsContextLeaked
+     */
+    public function checkForLeak(string $boundary): void
+    {
+        $mode = config('rls.leak_canary', 'log');
+
+        if ($mode === 'off' || ! $this->hasContext()) {
+            return;
+        }
+
+        // Collect the dimensions across the *whole* stack, not just the current frame: a nested
+        // leak (multiple unpopped frames) has forget() to clear them all, so the record must name
+        // every leaked dimension, not only the top.
+        $dimensions = [];
+
+        foreach ($this->stack() as $frame) {
+            $dimensions = [...$dimensions, ...array_keys($frame->values())];
+        }
+        $dimensions = array_values(array_unique($dimensions));
+        $this->forget();
+
+        if ($mode === 'throw') {
+            throw RlsContextLeaked::at($boundary, $dimensions);
+        }
+
+        Log::critical(
+            "RLS context leaked into a new {$boundary} and was cleared.",
+            ['boundary' => $boundary, 'dimensions' => $dimensions],
+        );
+    }
+
+    public function forget(): void
+    {
+        $this->context->forget(self::KEY);
+        $this->afterChange();
     }
 }

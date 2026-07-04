@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Console;
 
 use Illuminate\Console\Command;
@@ -21,7 +23,7 @@ class AuditCommand extends Command
         $findings = [];
 
         foreach ($paths as $path) {
-            if (! File::isDirectory($path)) {
+            if (!File::isDirectory($path)) {
                 continue;
             }
 
@@ -33,11 +35,11 @@ class AuditCommand extends Command
                 $lines = preg_split('/\R/', File::get($file->getPathname()));
 
                 foreach ($lines as $number => $line) {
-                    if (preg_match($pattern, $line, $m)) {
+                    if (preg_match($pattern, $line, $matches)) {
                         $findings[] = [
                             'file' => $file->getRelativePathname(),
                             'line' => $number + 1,
-                            'call' => $m[1],
+                            'call' => $matches[1],
                         ];
                     }
                 }
@@ -45,7 +47,14 @@ class AuditCommand extends Command
         }
 
         foreach ($findings as $finding) {
-            $this->line("  {$finding['file']}:{$finding['line']}  {$finding['call']}()");
+            $this->line(
+                sprintf(
+                    '  %s:%d  %s()',
+                    $finding['file'],
+                    $finding['line'],
+                    $finding['call'],
+                ),
+            );
         }
 
         $this->info(count($findings) . ' bypass call site(s) found.');
@@ -53,7 +62,13 @@ class AuditCommand extends Command
         $threshold = $this->option('threshold');
 
         if ($threshold !== null && count($findings) > (int) $threshold) {
-            $this->error("Bypass call sites (" . count($findings) . ") exceed the threshold of {$threshold}.");
+            $this->error(
+                sprintf(
+                    'Bypass call sites (%s) exceed the threshold of %d.',
+                    count($findings),
+                    $threshold,
+                ),
+            );
 
             return self::FAILURE;
         }

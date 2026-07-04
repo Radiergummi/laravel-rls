@@ -7,7 +7,7 @@ Everything needed to pick this project back up. Read this first.
 `radiergummi/laravel-rls` — a Laravel package making PostgreSQL Row-Level
 Security a transparent tenant-isolation layer. The design was brainstormed in
 full, an implementation plan written, and a **proof of concept built covering
-the entire design surface** (56 tests, all green against real Postgres 18).
+the entire design surface** (97 tests, all green against real Postgres 18).
 
 Goal of the PoC was to answer *"does this actually work across the hard cases —
 connection pooling, jobs, restricted roles, other connection packages?"* — and
@@ -26,7 +26,7 @@ the answer is **yes**, with specific gotchas now captured in code and tests.
 ## Current state
 
 - **Branch:** `main` (pushed to origin; one self-contained commit per feature).
-- **Tests:** `vendor/bin/phpunit` → 94 tests / 175 assertions, all passing.
+- **Tests:** `vendor/bin/phpunit` → 97 tests / 181 assertions, all passing.
 - **P0 hardening complete** and **most of P1 done.** P0: leak canary, context
   value validation, resolver-collision guard, session reset/reconnect,
   read-replica context, real-PgBouncer test. P1: `withDefault()`, bypass

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'prefix' => 'app.',
     'role_model' => 'owner',
@@ -23,5 +25,5 @@ return [
     // 'log' (critical log), 'throw' (fail the unit of work), or 'off'.
     'leak_canary' => 'log',
 
-    'connection_class' => \Radiergummi\LaravelRls\Database\RlsPostgresConnection::class,
+    'connection_class' => Radiergummi\LaravelRls\Database\RlsPostgresConnection::class,
 ];

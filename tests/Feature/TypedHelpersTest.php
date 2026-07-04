@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
+use BadMethodCallException;
 use Illuminate\Support\Facades\DB;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Tests\TestCase;
@@ -10,7 +13,7 @@ class TypedHelpersTest extends TestCase
 {
     public function test_generated_sql_helper_casts_context_to_the_declared_type(): void
     {
-        Rls::defineContext(fn ($c) => $c->uuid('tenant_id'));
+        Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
 
         foreach (Rls::schema()->functionStatements() as $sql) {
             DB::statement($sql);
@@ -29,21 +32,25 @@ class TypedHelpersTest extends TestCase
 
     public function test_typed_php_accessor_reads_the_dimension(): void
     {
-        Rls::defineContext(fn ($c) => $c->uuid('tenant_id'));
+        Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
 
         $uuid = '22222222-2222-2222-2222-222222222222';
 
         Rls::actingAs(['tenant_id' => $uuid], function () use ($uuid) {
+            // tenantId() is a dynamic accessor via RlsManager::__call (snake_cased
+            // to the 'tenant_id' dimension) — no static signature to resolve.
+            // @phpstan-ignore staticMethod.notFound (magic __call accessor for a declared dimension)
             $this->assertSame($uuid, Rls::tenantId());
         });
     }
 
     public function test_unknown_accessor_throws(): void
     {
-        Rls::defineContext(fn ($c) => $c->uuid('tenant_id'));
+        Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
 
-        $this->expectException(\BadMethodCallException::class);
+        $this->expectException(BadMethodCallException::class);
 
+        // @phpstan-ignore staticMethod.notFound (intentionally calls an undeclared accessor to assert __call throws)
         Rls::somethingUndeclared();
     }
 }

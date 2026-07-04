@@ -1,12 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Events;
 
 /**
- * Fired whenever RLS is bypassed via Rls::withoutRls()/system(). Carries the
- * (required) reason so bypasses are observable — logged, counted, or alerted on.
+ * Fired whenever RLS is bypassed via {@see Rls::withoutRls()}/{@see Rls::system()}.
+ *
+ * Carries the (required) reason, so bypasses are observable: logged, counted, or alerted on.
  */
-class RlsBypassed
+readonly class RlsBypassed
 {
-    public function __construct(public readonly string $reason) {}
+    public function __construct(public string $reason) {}
 }

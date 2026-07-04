@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Testing;
 
 use Closure;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\ExpectationFailedException;
 use Radiergummi\LaravelRls\Facades\Rls;
 
 trait InteractsWithRls
@@ -24,6 +28,9 @@ trait InteractsWithRls
         return Rls::withoutRls($reason, $callback);
     }
 
+    /**
+     * @throws ExpectationFailedException
+     */
     protected function assertTableProtected(string $table): void
     {
         $row = DB::selectOne(
@@ -32,47 +39,49 @@ trait InteractsWithRls
         );
 
         $this->assertNotNull($row, "Table {$table} not found");
-        $this->assertTrue((bool) $row->relrowsecurity, "RLS not enabled on {$table}");
+        $this->assertTrue(
+            (bool) $row->relrowsecurity,
+            "RLS not enabled on {$table}",
+        );
 
         if (config('rls.role_model', 'owner') === 'owner') {
-            $this->assertTrue((bool) $row->relforcerowsecurity, "RLS not forced on {$table}");
+            $this->assertTrue(
+                (bool) $row->relforcerowsecurity,
+                "RLS not forced on {$table}",
+            );
         }
 
-        $hasRestrictive = collect(DB::select(
-            'select permissive from pg_policies where tablename = ?',
-            [$table],
-        ))->contains(fn ($p) => $p->permissive === 'RESTRICTIVE');
+        $hasRestrictive = collect(
+            DB::select(
+                'select permissive from pg_policies where tablename = ?',
+                [$table],
+            ),
+        )->contains(fn($p) => $p->permissive === 'RESTRICTIVE');
 
-        $this->assertTrue($hasRestrictive, "No restrictive isolation policy on {$table}");
+        $this->assertTrue(
+            $hasRestrictive,
+            "No restrictive isolation policy on {$table}",
+        );
     }
 
-    protected function assertRlsIsolates(string $modelClass, mixed $from, mixed $cannotSee): void
+    /**
+     * @param class-string<Model> $modelClass
+     * @param string              $dimension  the context dimension / model column to scope by
+     *                                        (defaults to tenant_id; pass e.g. 'org_id' for
+     *                                        any other declared dimension)
+     */
+    protected function assertRlsIsolates(string $modelClass, mixed $from, mixed $cannotSee, string $dimension = 'tenant_id'): void
     {
         $fromId = $this->tenantKey($from);
         $otherId = $this->tenantKey($cannotSee);
 
-        Rls::actingAs(['tenant_id' => $fromId], function () use ($modelClass, $otherId) {
-            $leaked = $modelClass::query()->where('tenant_id', $otherId)->count();
-            $this->assertSame(0, $leaked, "Rows from tenant {$otherId} are visible to the acting tenant");
-        });
-    }
-
-    protected function assertCannotWriteAcrossTenants(string $modelClass, mixed $actingAs, mixed $tenant): void
-    {
-        $actingId = $this->tenantKey($actingAs);
-        $foreignId = $this->tenantKey($tenant);
-
-        Rls::actingAs(['tenant_id' => $actingId], function () use ($modelClass, $foreignId) {
-            try {
-                // Run in a savepoint so the expected policy violation rolls back
-                // cleanly without aborting any surrounding transaction.
-                DB::transaction(function () use ($modelClass, $foreignId) {
-                    $modelClass::query()->create(['tenant_id' => $foreignId]);
-                });
-                $this->fail('Expected WITH CHECK to reject the cross-tenant write');
-            } catch (QueryException $e) {
-                $this->assertStringContainsStringIgnoringCase('row-level security', $e->getMessage());
-            }
+        Rls::actingAs([$dimension => $fromId], function () use ($modelClass, $otherId, $dimension) {
+            $leaked = $modelClass::query()->where($dimension, $otherId)->count();
+            $this->assertSame(
+                0,
+                $leaked,
+                "Rows scoped to {$otherId} are visible to the acting context",
+            );
         });
     }
 
@@ -86,14 +95,52 @@ trait InteractsWithRls
     }
 
     /**
-     * Leak canary — auto-invoked by Testbench via beforeApplicationDestroyed,
-     * so it runs even when the test class defines its own tearDown().
+     * @param class-string<Model> $modelClass
+     * @param string              $dimension  the context dimension / model column to scope by
+     *                                        (defaults to tenant_id; pass e.g. 'org_id' for
+     *                                        any other declared dimension)
+     */
+    protected function assertCannotWriteAcrossTenants(
+        string $modelClass,
+        mixed $actingAs,
+        mixed $tenant,
+        string $dimension = 'tenant_id',
+    ): void {
+        $actingId = $this->tenantKey($actingAs);
+        $foreignId = $this->tenantKey($tenant);
+
+        Rls::actingAs([$dimension => $actingId], function () use ($modelClass, $foreignId, $dimension) {
+            try {
+                // Run in a savepoint so the expected policy violation rolls back cleanly without
+                // aborting any surrounding transaction.
+                DB::transaction(static function () use ($modelClass, $foreignId, $dimension) {
+                    $modelClass::query()->create([$dimension => $foreignId]);
+                });
+
+                $this->fail('Expected WITH CHECK to reject the cross-context write');
+            } catch (QueryException $exception) {
+                $this->assertStringContainsStringIgnoringCase(
+                    'row-level security',
+                    $exception->getMessage(),
+                );
+            }
+        });
+    }
+
+    /**
+     * Leak canary — auto-invoked by Testbench via beforeApplicationDestroyed, so it runs even when
+     * the test class defines its own tearDown().
+     *
+     * @throws ExpectationFailedException
      */
     protected function tearDownInteractsWithRls(): void
     {
         $leaked = Rls::hasContext();
         Rls::forget();
 
-        $this->assertFalse($leaked, 'RLS context leaked past the test (stack not empty)');
+        $this->assertFalse(
+            $leaked,
+            'RLS context leaked past the test (stack not empty)',
+        );
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;

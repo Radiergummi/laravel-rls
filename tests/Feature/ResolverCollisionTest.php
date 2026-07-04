@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Database\Connection;
@@ -7,12 +9,13 @@ use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
 use Radiergummi\LaravelRls\Exceptions\ResolverCollision;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Tests\TestCase;
+use ReflectionProperty;
 
 class ResolverCollisionTest extends TestCase
 {
     public function test_detects_foreign_resolver_with_default_connection_class(): void
     {
-        $foreign = fn () => 'foreign';
+        $foreign = fn() => 'foreign';
 
         $this->assertTrue(
             RlsServiceProvider::detectResolverCollision($foreign, null, RlsPostgresConnection::class),
@@ -28,7 +31,7 @@ class ResolverCollisionTest extends TestCase
 
     public function test_no_collision_with_our_own_lingering_resolver(): void
     {
-        $own = fn () => 'ours';
+        $own = fn() => 'ours';
 
         $this->assertFalse(
             RlsServiceProvider::detectResolverCollision($own, $own, RlsPostgresConnection::class),
@@ -37,7 +40,7 @@ class ResolverCollisionTest extends TestCase
 
     public function test_no_collision_when_connection_class_is_composed(): void
     {
-        $foreign = fn () => 'foreign';
+        $foreign = fn() => 'foreign';
 
         $this->assertFalse(
             RlsServiceProvider::detectResolverCollision($foreign, null, 'App\\ComposedConnection'),
@@ -46,7 +49,7 @@ class ResolverCollisionTest extends TestCase
 
     public function test_boot_registration_throws_on_a_real_foreign_resolver(): void
     {
-        $ref = new \ReflectionProperty(RlsServiceProvider::class, 'ownResolver');
+        $ref = new ReflectionProperty(RlsServiceProvider::class, 'ownResolver');
         $prevOwn = $ref->getValue();
         $prevResolver = Connection::getResolver('pgsql');
 
@@ -54,7 +57,7 @@ class ResolverCollisionTest extends TestCase
             // Simulate a fresh process where another package registered first
             // and the user never set connection_class to compose with it.
             $ref->setValue(null, null);
-            Connection::resolverFor('pgsql', fn ($pdo, $database, $prefix, $config) => 'foreign');
+            Connection::resolverFor('pgsql', fn($pdo, $database, $prefix, $config) => 'foreign');
             config(['rls.connection_class' => RlsPostgresConnection::class]);
 
             $this->expectException(ResolverCollision::class);

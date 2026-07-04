@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\Event;
@@ -17,7 +19,7 @@ class BypassObservabilityTest extends TestCase
             $captured = $event;
         });
 
-        Rls::withoutRls('data-migration', fn () => null);
+        Rls::withoutRls('data-migration', fn() => null);
 
         $this->assertInstanceOf(RlsBypassed::class, $captured);
         $this->assertSame('data-migration', $captured->reason);
@@ -25,12 +27,12 @@ class BypassObservabilityTest extends TestCase
 
     public function test_bypass_is_logged_with_its_reason(): void
     {
-        Log::spy();
+        $log = Log::spy();
 
-        Rls::withoutRls('seeding', fn () => null);
+        Rls::withoutRls('seeding', fn() => null);
 
-        Log::shouldHaveReceived('notice')
-            ->withArgs(fn ($message, $context = []) => str_contains($message, 'seeding')
+        $log->shouldHaveReceived('notice')
+            ->withArgs(fn($message, $context = []) => str_contains($message, 'seeding')
                 || ($context['reason'] ?? null) === 'seeding')
             ->once();
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Auth\Events\Authenticated;
@@ -11,7 +13,7 @@ class AuthContextTest extends TestCase
 {
     public function test_context_is_established_from_the_authenticated_user(): void
     {
-        Rls::resolveContextUsing(fn ($user) => ['tenant_id' => $user->tenant_id]);
+        Rls::resolveContextUsing(fn($user) => ['tenant_id' => $user->tenant_id]);
 
         $user = new GenericUser(['id' => 1, 'tenant_id' => 'ten-99']);
         event(new Authenticated('web', $user));
@@ -22,7 +24,7 @@ class AuthContextTest extends TestCase
 
     public function test_resolver_yielding_nothing_leaves_context_empty(): void
     {
-        Rls::resolveContextUsing(fn ($user) => $user->tenant_id ? ['tenant_id' => $user->tenant_id] : []);
+        Rls::resolveContextUsing(fn($user) => $user->tenant_id ? ['tenant_id' => $user->tenant_id] : []);
 
         $user = new GenericUser(['id' => 1, 'tenant_id' => null]);
         event(new Authenticated('web', $user));

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
@@ -30,8 +32,8 @@ class WithDefaultTest extends TestCase
     public function test_scoping_column_default_references_the_context(): void
     {
         $default = DB::selectOne(
-            "select column_default from information_schema.columns " .
-            "where table_name = 'gadgets' and column_name = 'tenant_id'",
+            'select column_default from information_schema.columns '
+            . "where table_name = 'gadgets' and column_name = 'tenant_id'",
         )->column_default;
 
         $this->assertNotNull($default, 'expected a column default on the scoping column');
@@ -41,10 +43,13 @@ class WithDefaultTest extends TestCase
     public function test_insert_without_tenant_id_fills_it_from_the_context(): void
     {
         $tenant = '33333333-3333-3333-3333-333333333333';
-        $id = '44444444-4444-4444-4444-444444444444';
 
-        Rls::actingAs(['tenant_id' => $tenant], function () use ($id, $tenant) {
-            DB::table('gadgets')->insert(['id' => $id, 'name' => 'no explicit tenant']);
+        Rls::actingAs(['tenant_id' => $tenant], function () use ($tenant) {
+            $id = '44444444-4444-4444-4444-444444444444';
+            DB::table('gadgets')->insert([
+                'id' => $id,
+                'name' => 'no explicit tenant',
+            ]);
 
             $row = DB::table('gadgets')->where('id', $id)->first();
 

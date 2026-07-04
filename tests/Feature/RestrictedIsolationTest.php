@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
@@ -27,7 +29,7 @@ class RestrictedIsolationTest extends TestCase
 
     protected function defineEnvironment($app): void
     {
-        $conn = fn (string $user) => [
+        $conn = fn(string $user) => [
             'driver' => 'pgsql',
             'host' => '127.0.0.1',
             'port' => 5432,
@@ -62,9 +64,9 @@ class RestrictedIsolationTest extends TestCase
         $admin->statement('alter table demo.things enable row level security'); // NO force
         $admin->statement('create policy things_access on demo.things as permissive for all using (true) with check (true)');
         $admin->statement(
-            "create policy things_iso on demo.things as restrictive for all " .
-            "using (tenant_id = rls.context('tenant_id')::uuid) " .
-            "with check (tenant_id = rls.context('tenant_id')::uuid)",
+            'create policy things_iso on demo.things as restrictive for all '
+            . "using (tenant_id = rls.context('tenant_id')::uuid) "
+            . "with check (tenant_id = rls.context('tenant_id')::uuid)",
         );
 
         $admin->statement('grant usage on schema demo to rls_restricted');
@@ -121,7 +123,7 @@ class RestrictedIsolationTest extends TestCase
 
         $this->expectException(AdminConnectionRequired::class);
 
-        Rls::system('audit', fn () => null);
+        Rls::system('audit', fn() => null);
     }
 
     public function test_restricted_role_cannot_self_escape_via_bypass_guc(): void
