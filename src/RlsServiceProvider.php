@@ -26,6 +26,7 @@ class RlsServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \Radiergummi\LaravelRls\Console\InstallCommand::class,
+                \Radiergummi\LaravelRls\Console\SyncCommand::class,
                 \Radiergummi\LaravelRls\Console\CheckCommand::class,
                 \Radiergummi\LaravelRls\Console\AuditCommand::class,
             ]);

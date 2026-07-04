@@ -64,9 +64,10 @@ and *where* it touches the code.
   `resolveContextUsing()`), then prints next steps. Publish groups: `rls-config`,
   `rls-migrations`, `rls-provider`. *Design §10.*
 
-- [~] **`rls:install` / `rls:sync` / `rls:upgrade` commands.** `rls:install` done
-  (above). Still to do: `rls:sync` (regenerate typed `rls.<dim>()` helpers from
-  `ContextSchema`) and `rls:upgrade` (version-migrate `rls.*`). *Design §8/§12.*
+- [~] **`rls:install` / `rls:sync` / `rls:upgrade` commands.** `rls:install` and
+  `rls:sync` done (`rls:sync` regenerates the typed `rls.<dim>()` helpers from the
+  declared `ContextSchema`). Still to do: `rls:upgrade` (version-migrate `rls.*`).
+  *Design §8/§12.*
 
 - [ ] **Extension-based install path (`--extension`).** Single-source the SQL and
   emit both the migration and a PGXN extension bundle (`.control` + version
