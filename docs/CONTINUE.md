@@ -26,11 +26,15 @@ the answer is **yes**, with specific gotchas now captured in code and tests.
 ## Current state
 
 - **Branch:** `main` (pushed to origin; one self-contained commit per feature).
-- **Tests:** `vendor/bin/phpunit` → 80 tests / 150 assertions, all passing.
-- **P0 hardening complete:** all six P0 backlog items done (leak canary, context
+- **Tests:** `vendor/bin/phpunit` → 94 tests / 175 assertions, all passing.
+- **P0 hardening complete** and **most of P1 done.** P0: leak canary, context
   value validation, resolver-collision guard, session reset/reconnect,
-  read-replica context, real-PgBouncer test). Next work is P1; see
-  [`docs/BACKLOG.md`](BACKLOG.md).
+  read-replica context, real-PgBouncer test. P1: `withDefault()`, bypass
+  hardening tests, bypass observability (event/log/`rls:audit --threshold`),
+  `rls:install`, `rls:sync`, tenancy docs recipe.
+- **Remaining (see [`docs/BACKLOG.md`](BACKLOG.md)), all decision-gated or larger:**
+  `rls:upgrade` (needs a versioning scheme), `--extension`/PGXN path, per-table
+  fail-loud for raw SQL (open policy question), and the P2 polish items.
 
 ## Bring the environment back up
 
