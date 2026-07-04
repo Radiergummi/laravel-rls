@@ -15,7 +15,39 @@ class RlsManager
 
     private ?Closure $resolver = null;
 
+    private ?ContextSchema $schema = null;
+
     public function __construct(private readonly Repository $context) {}
+
+    /**
+     * Declare the app's context dimensions (opt-in sugar). Enables typed PHP
+     * accessors (Rls::tenantId()) and typed SQL helper generation.
+     */
+    public function defineContext(Closure $callback): void
+    {
+        $schema = new ContextSchema();
+        $callback($schema);
+        $this->schema = $schema;
+    }
+
+    public function schema(): ?ContextSchema
+    {
+        return $this->schema;
+    }
+
+    /** Typed accessors for declared dimensions, e.g. Rls::tenantId(). */
+    public function __call(string $method, array $arguments): mixed
+    {
+        $key = \Illuminate\Support\Str::snake($method);
+
+        if ($this->schema?->has($key)) {
+            return $this->get($key);
+        }
+
+        throw new \BadMethodCallException(
+            "Method {$method}() is not a declared RLS context dimension.",
+        );
+    }
 
     /**
      * Register the app's identity -> context mapping. Called from the
