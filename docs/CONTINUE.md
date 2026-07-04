@@ -26,9 +26,11 @@ the answer is **yes**, with specific gotchas now captured in code and tests.
 ## Current state
 
 - **Branch:** `main` (pushed to origin; one self-contained commit per feature).
-- **Tests:** `vendor/bin/phpunit` → 67 tests / 130 assertions, all passing.
-- **P0 hardening underway:** leak canary + context value validation done; see
-  [`docs/BACKLOG.md`](BACKLOG.md) for the rest.
+- **Tests:** `vendor/bin/phpunit` → 80 tests / 150 assertions, all passing.
+- **P0 hardening complete:** all six P0 backlog items done (leak canary, context
+  value validation, resolver-collision guard, session reset/reconnect,
+  read-replica context, real-PgBouncer test). Next work is P1; see
+  [`docs/BACKLOG.md`](BACKLOG.md).
 
 ## Bring the environment back up
 
@@ -45,6 +47,9 @@ docker run -d --name rls-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:
 vendor/bin/phpunit               # should be all green
 docker rm -f rls-pg              # when done
 ```
+
+`PgBouncerTest` is skipped unless a bouncer is reachable on `127.0.0.1:6432`.
+To run it: `./tests/bin/setup-pgbouncer.sh` (then `docker rm -f rls-pgbouncer`).
 
 **Critical gotcha:** tests connect as the non-superuser `rls_app`, not `postgres`.
 Superusers (and BYPASSRLS roles) skip RLS entirely — testing as one makes every

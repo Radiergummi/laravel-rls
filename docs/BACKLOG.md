@@ -21,11 +21,13 @@ and *where* it touches the code.
   malformed value can reach the DB. No-op when `defineContext()` wasn't used or
   for undeclared dimensions. *Design §4/§18.*
 
-- [ ] **Verify against real PgBouncer (transaction pooling).** The PoC proves the
-  transaction-local mechanism that *should* work under transaction pooling, but
-  never ran against an actual bouncer. Add a docker-compose PgBouncer in
-  transaction mode to the test matrix, plus the prepared-statement caveat
-  (PgBouncer ≥1.21 or `PDO::ATTR_EMULATE_PREPARES`). *Design §15.*
+- [x] **Verify against real PgBouncer (transaction pooling).** `PgBouncerTest`
+  runs the transaction strategy through a real PgBouncer (1.25) in transaction
+  pooling mode: context reaches queries at each BEGIN, each transaction gets its
+  own context regardless of which pooled backend serves it, and nothing leaks
+  once context is inactive. Uses `PDO::ATTR_EMULATE_PREPARES` for the
+  prepared-statement caveat. Gated — skipped unless 127.0.0.1:6432 is reachable;
+  bring it up with `tests/bin/setup-pgbouncer.sh`. *Design §15.*
 
 - [x] **`session` strategy reset on reconnect + Octane flush.**
   `HandlesRlsContext::resetSessionContext()` blanks the persistent session GUCs;
