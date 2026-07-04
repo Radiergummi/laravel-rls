@@ -125,13 +125,14 @@ and *where* it touches the code.
 
 ---
 
-## Open design decisions (need a call before hardening)
+## Open design decisions — RESOLVED (2026-07-04)
 
-1. **`wrap` vs `explicit` as the default boundary.** PoC defaults to `wrap`
-   (never accidentally unscoped) but `explicit` is less magical. *Design §21 Q1.*
-2. **How self-deprecating the README positioning should be** ("maybe use a global
-   scope + PHPStan instead"). Currently honest/blunt.
-3. **Whether the tenancy-package bridge is a day-one deliverable** vs docs-only.
+1. **`wrap` vs `explicit` default boundary** → **keep `wrap`** (secure-by-default;
+   already the default, no change). *Design §21 Q1.*
+2. **README positioning tone** → **keep honest/blunt** ("here's when NOT to use
+   this").
+3. **Tenancy-package bridge** → **docs-only recipe first**; a first-class
+   stancl/spatie bridge can follow later.
 
 ---
 
