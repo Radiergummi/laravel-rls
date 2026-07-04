@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JsBuildToolPackageJson" sorting="DEFINITION_ORDER" />
+  <component name="JsFlowSettings">
+    <service-enabled>true</service-enabled>
+    <exe-path />
+    <other-services-enabled>true</other-services-enabled>
+    <auto-save>true</auto-save>
+  </component>
+  <component name="MarkdownSettings">
+    <enabledExtensions>
+      <entry key="MermaidLanguageExtension" value="false" />
+      <entry key="PlantUMLLanguageExtension" value="false" />
+    </enabledExtensions>
+    <option name="showProblemsInCodeBlocks" value="false" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectInspectionProfilesVisibleTreeState">
+    <entry key="Project Default">
+      <profile-state>
+        <expanded-state>
+          <State>
+            <id>Shell script</id>
+          </State>
+        </expanded-state>
+        <selected-state>
+          <State>
+            <id>User defined</id>
+          </State>
+        </selected-state>
+      </profile-state>
+    </entry>
+  </component>
+  <component name="ProjectUserFactors">
+    <factor id="completionFinishedType">
+      <dailyData date="11-07-2022">
+        <observation name="cancelled" value="3,0" />
+        <observation name="explicitSelect" value="2,0" />
+      </dailyData>
+    </factor>
+    <factor id="completionType">
+      <dailyData date="11-07-2022">
+        <observation name="BASIC" value="5,0" />
+      </dailyData>
+    </factor>
+    <factor id="completionUsage">
+      <dailyData date="11-07-2022">
+        <observation name="count" value="5,0" />
+      </dailyData>
+    </factor>
+    <factor id="itemPosition">
+      <dailyData date="11-07-2022">
+        <observation name="0" value="2,0" />
+      </dailyData>
+    </factor>
+    <factor id="mnemonicsUsage">
+      <dailyData date="11-07-2022">
+        <observation name="total" value="2,0" />
+        <observation name="withMnemonics" value="0,0" />
+      </dailyData>
+    </factor>
+    <factor id="prefixLength">
+      <dailyData date="11-07-2022">
+        <observation name="16" value="1,0" />
+        <observation name="7" value="1,0" />
+      </dailyData>
+    </factor>
+    <factor id="prefixMatchingType">
+      <dailyData date="11-07-2022">
+        <observation name="GREEDY_WITH_CASE" value="1,0" />
+        <observation name="START_WITH" value="1,0" />
+      </dailyData>
+    </factor>
+    <factor id="timeBetweenTyping">
+      <dailyData date="11-07-2022">
+        <observation name="average" value="148,0" />
+        <observation name="count" value="28,0" />
+      </dailyData>
+    </factor>
+  </component>
+</project>

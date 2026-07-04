@@ -1,0 +1,28 @@
+{
+    "name": "radiergummi/laravel-rls",
+    "description": "PostgreSQL Row-Level Security for Laravel",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/database": "^11.0|^12.0",
+        "illuminate/contracts": "^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": { "Radiergummi\\Rls\\": "src/" }
+    },
+    "autoload-dev": {
+        "psr-4": { "Radiergummi\\Rls\\Tests\\": "tests/" }
+    },
+    "extra": {
+        "laravel": {
+            "providers": ["Radiergummi\\Rls\\RlsServiceProvider"]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
