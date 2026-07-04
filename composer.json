@@ -10,7 +10,8 @@
     },
     "require-dev": {
         "orchestra/testbench": "^9.0|^10.0",
-        "phpunit/phpunit": "^11.0"
+        "phpunit/phpunit": "^11.0",
+        "tpetry/laravel-postgresql-enhanced": "^3.7"
     },
     "autoload": {
         "psr-4": { "Radiergummi\\Rls\\": "src/" }

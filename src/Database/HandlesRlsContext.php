@@ -27,7 +27,7 @@ trait HandlesRlsContext
         }
     }
 
-    protected function run($query, $bindings, Closure $callback)
+    protected function run($query, $bindings, Closure $callback): mixed
     {
         $this->guardRlsBoundary($query);
 

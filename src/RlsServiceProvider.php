@@ -22,22 +22,27 @@ class RlsServiceProvider extends ServiceProvider
                 \Radiergummi\Rls\Console\AuditCommand::class,
             ]);
         }
+    }
 
+    public function boot(): void
+    {
+        // Registered in boot() (not register()) so it wins over other pgsql
+        // connection packages that register their resolver in boot(). Point
+        // rls.connection_class at a class extending theirs to compose.
         Connection::resolverFor('pgsql', function ($pdo, $database, $prefix, $config) {
             $class = config('rls.connection_class', RlsPostgresConnection::class);
 
             return new $class($pdo, $database, $prefix, $config);
         });
-    }
 
-    public function boot(): void
-    {
         $manager = $this->app->make('rls');
 
         $manager->setSyncCallback(function () {
             $connection = $this->app->make('db')->connection();
 
-            if ($connection instanceof RlsPostgresConnection && $connection->transactionLevel() > 0) {
+            // Capability check (not instanceof) so composed connections built
+            // on other pgsql packages (e.g. tpetry) are recognised too.
+            if (method_exists($connection, 'applyRlsContext') && $connection->transactionLevel() > 0) {
                 $connection->applyRlsContext();
             }
         });
