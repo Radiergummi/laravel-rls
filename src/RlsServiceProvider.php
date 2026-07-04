@@ -16,6 +16,10 @@ class RlsServiceProvider extends ServiceProvider
         $this->app->singleton('rls', fn ($app) => new RlsManager($app->make(\Illuminate\Log\Context\Repository::class)));
         $this->app->alias('rls', RlsManager::class);
 
+        if ($this->app->runningInConsole()) {
+            $this->commands([\Radiergummi\Rls\Console\CheckCommand::class]);
+        }
+
         Connection::resolverFor('pgsql', function ($pdo, $database, $prefix, $config) {
             $class = config('rls.connection_class', RlsPostgresConnection::class);
 
