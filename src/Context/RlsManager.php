@@ -220,7 +220,7 @@ class RlsManager
     }
 
     /**
-     * Override how bypass scopes (system()/withoutRls()) are handled.
+     * Override how bypass scopes (system()/withoutIsolation()) are handled.
      *
      * When unset, bypass pushes a bypass context (owner mode, GUC-driven). In restricted mode the
      * provider installs a handler that routes the callback to the admin connection instead.
@@ -326,7 +326,7 @@ class RlsManager
      */
     public function system(string $reason, Closure $callback): mixed
     {
-        return $this->withoutRls($reason, $callback);
+        return $this->withoutIsolation($reason, $callback);
     }
 
     /**
@@ -339,7 +339,7 @@ class RlsManager
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
-    public function withoutRls(string $reason, Closure $callback): mixed
+    public function withoutIsolation(string $reason, Closure $callback): mixed
     {
         $this->events?->dispatch(new RlsBypassed($reason));
 

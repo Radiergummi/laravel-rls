@@ -31,7 +31,7 @@ class ContextInjectionTest extends TestCase
     #[Test]
     public function bypass_scope_sets_bypass_guc(): void
     {
-        Rls::withoutRls('seeding', function () {
+        Rls::withoutIsolation('seeding', function () {
             $this->assertTrue(DB::selectOne('select rls.bypass() as v')->v);
         });
         $this->assertFalse(DB::selectOne('select rls.bypass() as v')->v);

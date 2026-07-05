@@ -19,7 +19,7 @@ use Radiergummi\LaravelRls\Context\RlsManager;
  * @method static mixed                get(string $key)
  * @method static void                 set(string $key, mixed $value)
  * @method static mixed                isolateTo(array<string, mixed> $context, ?Closure(): mixed $callback = null)
- * @method static mixed                withoutRls(string $reason, Closure(): mixed $callback)
+ * @method static mixed                withoutIsolation(string $reason, Closure(): mixed $callback)
  * @method static mixed                system(string $reason, Closure(): mixed $callback)
  * @method static void                 resolveContextUsing(Closure(mixed): mixed $resolver)
  * @method static void                 establishFromUser(mixed $user)

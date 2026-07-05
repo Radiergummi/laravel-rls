@@ -21,7 +21,7 @@ class BypassObservabilityTest extends TestCase
             $captured = $event;
         });
 
-        Rls::withoutRls('data-migration', fn() => null);
+        Rls::withoutIsolation('data-migration', fn() => null);
 
         $this->assertInstanceOf(RlsBypassed::class, $captured);
         $this->assertSame('data-migration', $captured->reason);
@@ -32,7 +32,7 @@ class BypassObservabilityTest extends TestCase
     {
         $log = Log::spy();
 
-        Rls::withoutRls('seeding', fn() => null);
+        Rls::withoutIsolation('seeding', fn() => null);
 
         $log
             ->shouldHaveReceived('notice')

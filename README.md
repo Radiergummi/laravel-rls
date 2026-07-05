@@ -19,7 +19,7 @@ Rls::isolateTo(['tenant_id' => $tenant->id], function () {
 });
 
 // Bypass, deliberately and visibly (reason required, always logged/auditable).
-Rls::withoutRls('nightly-export', fn () => Document::all());
+Rls::withoutIsolation('nightly-export', fn () => Document::all());
 ```
 
 ```php

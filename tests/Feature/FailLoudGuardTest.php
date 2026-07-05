@@ -31,7 +31,7 @@ class FailLoudGuardTest extends TestCase
     #[Test]
     public function query_inside_bypass_does_not_throw(): void
     {
-        Rls::withoutRls('maintenance', function () {
+        Rls::withoutIsolation('maintenance', function () {
             $this->assertSame(0, Document::count());
         });
     }

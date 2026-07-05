@@ -34,7 +34,7 @@ class ContextBackingTest extends TestCase
     public function bypass_is_stripped_from_the_dehydrated_payload(): void
     {
         // A job dispatched inside a bypass scope must NOT inherit bypass.
-        Rls::withoutRls('export', function () use (&$payload) {
+        Rls::withoutIsolation('export', function () use (&$payload) {
             $this->assertTrue(Rls::current()?->isBypass());
             $payload = Context::dehydrate();
         });
@@ -50,7 +50,7 @@ class ContextBackingTest extends TestCase
     {
         Rls::isolateTo(['tenant_id' => 'ctx-a']);
 
-        Rls::withoutRls('export', function () use (&$payload) {
+        Rls::withoutIsolation('export', function () use (&$payload) {
             $payload = Context::dehydrate();
         });
 

@@ -103,7 +103,7 @@ class RlsManagerTest extends TestCase
     public function without_rls_is_a_bypass_scope(): void
     {
         $manager = $this->manager();
-        $manager->withoutRls('seeding', function () use ($manager) {
+        $manager->withoutIsolation('seeding', function () use ($manager) {
             $this->assertTrue($manager->current()?->isBypass());
             $this->assertSame('seeding', $manager->current()->reason());
         });
@@ -230,7 +230,7 @@ class RlsManagerTest extends TestCase
         );
 
         $manager = new RlsManager(new Repository(new Dispatcher()), $events);
-        $manager->withoutRls('nightly-report', fn() => null);
+        $manager->withoutIsolation('nightly-report', fn() => null);
 
         $this->assertInstanceOf(RlsBypassed::class, $captured);
         $this->assertSame('nightly-report', $captured->reason);

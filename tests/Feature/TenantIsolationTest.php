@@ -59,7 +59,7 @@ class TenantIsolationTest extends TestCase
     #[Test]
     public function bypass_sees_all_tenants(): void
     {
-        Rls::withoutRls('audit', function () {
+        Rls::withoutIsolation('audit', function () {
             $this->assertSame(5, Document::count());
         });
     }

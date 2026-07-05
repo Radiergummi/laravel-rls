@@ -12,7 +12,7 @@ class MissingTenantContext extends RuntimeException
     {
         return new self(
             'Query against an RLS-managed table with no context set.'
-            . ' Establish context with Rls::isolateTo(), or wrap in Rls::withoutRls() to bypass.'
+            . ' Establish context with Rls::isolateTo(), or wrap in Rls::withoutIsolation() to bypass.'
             . " Query: {$query}",
         );
     }

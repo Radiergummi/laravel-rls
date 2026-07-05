@@ -47,7 +47,7 @@ trait InteractsWithRls
      */
     protected function withoutRls(string $reason, Closure $callback): mixed
     {
-        return Rls::withoutRls($reason, $callback);
+        return Rls::withoutIsolation($reason, $callback);
     }
 
     /**

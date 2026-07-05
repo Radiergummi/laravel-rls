@@ -15,7 +15,7 @@ class BypassSample
 
     public function export(): void
     {
-        Rls::withoutRls('nightly-export', fn() => null);
+        Rls::withoutIsolation('nightly-export', fn() => null);
     }
 
     public function admin(): void
