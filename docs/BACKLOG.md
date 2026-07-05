@@ -54,10 +54,12 @@ and *where* it touches the code.
     strategy isn't synced (the sync callback only touches the default connection,
     and secondary connections resolve lazily). Fine under transaction/wrap.
 
-- [ ] **`tenant_id` assumptions hard-coded.** Some facilities like 
+- [x] **`tenant_id` assumptions hard-coded.** Some facilities like 
   `\Radiergummi\LaravelRls\Testing\InteractsWithRls` assume the `tenant_id`
   dimension is always present, while the library must never make any assumptions
   about the schema or tenancy layout.
+  Resolved via the isolation-vocabulary unification (2026-07-05): trait has no
+  `tenant_id` literal; all isolation keys are explicit.
 
 ---
 
@@ -78,10 +80,10 @@ and *where* it touches the code.
   emit both the migration and a PGXN extension bundle (`.control` + version
   scripts). For superuser/self-hosted. *Design §8.* Touches: `RlsFunctions`.
 
-- [x] **`withDefault()` column default.** `scopedBy('tenant_id')->withDefault()`
+- [x] **`withDefault()` column default.** `isolatedBy('tenant_id')->withDefault()`
   sets the scoping column's default to `rls.context('tenant_id')::uuid`, so an
-  insert that omits it is auto-filled from context. `scopedBy()` now returns a
-  fluent `ScopedByDefinition`. With `WITH CHECK`, makes the scope id "impossible
+  insert that omits it is auto-filled from context. `isolatedBy()` now returns a
+  fluent `IsolatedByDefinition`. With `WITH CHECK`, makes the scope id "impossible
   to get wrong." *Design §9.*
 
 - [x] **`rls.bypass()` semantics per role model, hardened.** Tests confirm the
@@ -94,7 +96,7 @@ and *where* it touches the code.
   A first-class bridge (auto-wiring their tenant-initialized events) can follow.
   *Design §19 — the strategic positioning.*
 
-- [x] **Bypass observability: logging + threshold in `rls:audit`.** `withoutRls()`
+- [x] **Bypass observability: logging + threshold in `rls:audit`.** `withoutIsolation()`
   fires an `RlsBypassed` event (carrying the reason); the provider logs each at
   `notice`. `rls:audit --threshold=N` exits 1 when the bypass call-site count
   exceeds N. *Design §16.*
@@ -109,7 +111,7 @@ and *where* it touches the code.
 ## P2 — Ergonomics & polish
 
 - [ ] **Earned sugar macros** (`$table->tenantIsolated()`) generated from a
-  declared primary scope dimension, rather than only the generic `scopedBy()`.
+  declared primary scope dimension, rather than only the generic `isolatedBy()`.
   *Design §9.*
 
 - [ ] **Richer test assertions** from the design not yet built: `assertVisibleTo`,
