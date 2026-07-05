@@ -366,24 +366,24 @@ class RlsManager
             return;
         }
 
-        // Collect the dimensions across the *whole* stack, not just the current frame: a nested
+        // Collect the isolation keys across the *whole* stack, not just the current frame: a nested
         // leak (multiple unpopped frames) has forget() to clear them all, so the record must name
-        // every leaked dimension, not only the top.
-        $dimensions = [];
+        // every leaked isolation key, not only the top.
+        $isolationKeys = [];
 
         foreach ($this->stack() as $frame) {
-            $dimensions = [...$dimensions, ...array_keys($frame->values())];
+            $isolationKeys = [...$isolationKeys, ...array_keys($frame->values())];
         }
-        $dimensions = array_values(array_unique($dimensions));
+        $isolationKeys = array_values(array_unique($isolationKeys));
         $this->forget();
 
         if ($mode === 'throw') {
-            throw RlsContextLeaked::at($boundary, $dimensions);
+            throw RlsContextLeaked::at($boundary, $isolationKeys);
         }
 
         Log::critical(
             "RLS context leaked into a new {$boundary} and was cleared.",
-            ['boundary' => $boundary, 'dimensions' => $dimensions],
+            ['boundary' => $boundary, 'isolation_keys' => $isolationKeys],
         );
     }
 

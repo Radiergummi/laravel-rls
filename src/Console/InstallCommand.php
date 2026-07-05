@@ -23,7 +23,7 @@ class InstallCommand extends Command
         $this->info('laravel-rls installed.');
         $this->line('Next steps:');
         $this->line('  1. Register App\\Providers\\RlsServiceProvider in bootstrap/providers.php');
-        $this->line('  2. Edit it to declare your context dimensions and identity mapping');
+        $this->line('  2. Edit it to declare your isolation keys and identity mapping');
         $this->line('  3. Run: php artisan migrate   (installs the rls.* SQL helpers)');
         $this->line('  4. Scope tables with $table->isolatedBy(...) in your migrations');
 

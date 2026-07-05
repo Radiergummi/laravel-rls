@@ -57,7 +57,7 @@ trait HandlesRlsContext
         assert(is_string($prefix));
         $context = app('rls')->current();
 
-        // Blank any dimension keys we previously set, so popping/switching context cannot leave a
+        // Blank any isolation keys we previously set, so popping/switching context cannot leave a
         // stale value behind.
         foreach ($this->rlsAppliedKeys as $key) {
             $this->setConfig($prefix . $key, '', $local);

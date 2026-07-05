@@ -26,7 +26,7 @@ the answer is **yes**, with specific gotchas now captured in code and tests.
 ## Current state
 
 - **Branch:** `main` (pushed to origin; one self-contained commit per feature).
-- **Tests:** `vendor/bin/phpunit` → 97 tests / 181 assertions, all passing.
+- **Tests:** `vendor/bin/phpunit` → 97 tests / 182 assertions, all passing.
 - **P0 hardening complete** and **most of P1 done.** P0: leak canary, context
   value validation, resolver-collision guard, session reset/reconnect,
   read-replica context, real-PgBouncer test. P1: `withDefault()`, bypass

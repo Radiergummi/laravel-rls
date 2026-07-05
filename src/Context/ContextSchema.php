@@ -18,7 +18,7 @@ class ContextSchema
      *
      * @var array<string, string>
      */
-    private array $dimensions = [];
+    private array $isolationKeys = [];
 
     public function uuid(string $name): self
     {
@@ -27,7 +27,7 @@ class ContextSchema
 
     private function add(string $name, string $type): self
     {
-        $this->dimensions[$name] = $type;
+        $this->isolationKeys[$name] = $type;
 
         return $this;
     }
@@ -54,7 +54,7 @@ class ContextSchema
 
     public function has(string $name): bool
     {
-        return isset($this->dimensions[$name]);
+        return isset($this->isolationKeys[$name]);
     }
 
     /**
@@ -64,7 +64,7 @@ class ContextSchema
      */
     public function matches(string $name, mixed $value): bool
     {
-        $type = $this->dimensions[$name] ?? null;
+        $type = $this->isolationKeys[$name] ?? null;
 
         if ($type === null) {
             return true;
@@ -103,7 +103,7 @@ class ContextSchema
      */
     public function isolationKeys(): array
     {
-        return $this->dimensions;
+        return $this->isolationKeys;
     }
 
     /**
@@ -116,7 +116,7 @@ class ContextSchema
     {
         $statements = [];
 
-        foreach ($this->dimensions as $name => $type) {
+        foreach ($this->isolationKeys as $name => $type) {
             $statements[] = sprintf(
                 'create or replace function rls.%s() returns %s language sql stable as $$'
                 . " select rls.context('%s')::%s $$",
