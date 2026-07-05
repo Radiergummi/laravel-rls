@@ -36,12 +36,12 @@ class RlsSchemaMacros
         });
 
         Blueprint::macro(
-            'scopedBy',
-            function (string $column, ?string $dimension = null, string $type = 'uuid'): ScopedByDefinition {
+            'isolatedBy',
+            function (string $column, ?string $key = null, string $type = 'uuid'): IsolatedByDefinition {
                 $table = $this->getTable();
-                $dimension ??= $column;
+                $key ??= $column;
                 $owner = config('rls.role_model', 'owner') === 'owner';
-                $predicate = sprintf('"%s" = rls.context(\'%s\')::%s', $column, $dimension, $type);
+                $predicate = sprintf('"%s" = rls.context(\'%s\')::%s', $column, $key, $type);
 
                 if ($owner) {
                     $predicate = "rls.bypass() or {$predicate}";
@@ -49,7 +49,7 @@ class RlsSchemaMacros
 
                 // One helper for every raw command; keeps the protected-call
                 // exemption in a single place and doubles as the addRaw callback
-                // handed to ScopedByDefinition.
+                // handed to IsolatedByDefinition.
                 $raw = function (string $sql): void {
                     // @phpstan-ignore method.protected (macro closure is bound to Blueprint at runtime, where addCommand is in scope)
                     $this->addCommand('rlsRaw', ['sql' => $sql]);
@@ -70,17 +70,17 @@ class RlsSchemaMacros
                 $raw(sprintf(
                     'create policy "%s_%s_isolation" on "%s" as restrictive for all using (%s) with check (%s)',
                     $table,
-                    $dimension,
+                    $key,
                     $table,
                     $predicate,
                     $predicate,
                 ));
 
-                return new ScopedByDefinition(
+                return new IsolatedByDefinition(
                     $raw,
                     $table,
                     $column,
-                    $dimension,
+                    $key,
                     $type,
                 );
             },

@@ -22,7 +22,7 @@ class RlsCheckCommandTest extends TestCase
         Schema::create('checked_things', function ($table) {
             $table->uuid('id')->primary();
             $table->uuid('org_id');
-            $table->scopedBy('org_id');
+            $table->isolatedBy('org_id');
         });
 
         try {

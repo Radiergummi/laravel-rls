@@ -50,7 +50,7 @@ class WithDefaultTest extends TestCase
             $table->uuid('id')->primary();
             $table->uuid('tenant_id');
             $table->string('name');
-            $table->scopedBy('tenant_id')->withDefault();
+            $table->isolatedBy('tenant_id')->withDefault();
         });
     }
 

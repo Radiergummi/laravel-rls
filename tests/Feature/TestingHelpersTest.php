@@ -44,7 +44,7 @@ class TestingHelpersTest extends TestCase
         Schema::create('gadgets', function ($table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id');
-            $table->scopedBy('tenant_id');
+            $table->isolatedBy('tenant_id');
         });
     }
 

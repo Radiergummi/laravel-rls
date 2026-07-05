@@ -51,7 +51,7 @@ class AgnosticDimensionHelpersTest extends TestCase
         Schema::create('org_things', function ($table) {
             $table->uuid('id')->primary();
             $table->uuid('org_id');
-            $table->scopedBy('org_id');
+            $table->isolatedBy('org_id');
         });
     }
 

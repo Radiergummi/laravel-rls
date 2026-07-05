@@ -15,7 +15,7 @@ class CheckCommand extends Command
 
     public function handle(): int
     {
-        // Detect managed tables by the artifacts scopedBy() produces — RLS
+        // Detect managed tables by the artifacts isolatedBy() produces — RLS
         // enabled or an isolation policy — rather than by a hardcoded column
         // name, so any declared dimension (org_id, region, ...) is audited, not
         // just tenant_id. A table with *no* RLS setup at all has no agnostic

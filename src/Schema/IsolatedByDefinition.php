@@ -7,10 +7,10 @@ namespace Radiergummi\LaravelRls\Schema;
 use Closure;
 
 /**
- * Returned by the `scopedBy()` blueprint macro to allow fluent opt-in extras, e.g.,
- * `$table->scopedBy('tenant_id')->withDefault()`.
+ * Returned by the `isolatedBy()` blueprint macro to allow fluent opt-in extras, e.g.,
+ * `$table->isolatedBy('org_id')->withDefault()`.
  */
-readonly class ScopedByDefinition
+readonly class IsolatedByDefinition
 {
     /**
      * @param Closure(string): void $addRaw adds an rlsRaw blueprint command
@@ -19,7 +19,7 @@ readonly class ScopedByDefinition
         private Closure $addRaw,
         private string $table,
         private string $column,
-        private string $dimension,
+        private string $key,
         private string $type,
     ) {}
 
@@ -36,7 +36,7 @@ readonly class ScopedByDefinition
                 'alter table "%s" alter column "%s" set default rls.context(\'%s\')::%s',
                 $this->table,
                 $this->column,
-                $this->dimension,
+                $this->key,
                 $this->type,
             ),
         );
