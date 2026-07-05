@@ -18,7 +18,7 @@ class TestingHelpersTest extends TestCase
     #[Test]
     public function assert_table_protected_passes(): void
     {
-        $this->assertTableProtected('gadgets');
+        $this->assertTableIsolated('gadgets');
     }
 
     #[Test]
@@ -27,12 +27,12 @@ class TestingHelpersTest extends TestCase
         $a = (string) Str::uuid();
         $b = (string) Str::uuid();
 
-        $this->withoutRls('seed', function () use ($a, $b) {
+        $this->withoutIsolation('seed', function () use ($a, $b) {
             DB::table('gadgets')->insert(['id' => Str::uuid(), 'tenant_id' => $a]);
             DB::table('gadgets')->insert(['id' => Str::uuid(), 'tenant_id' => $b]);
         });
 
-        $this->withRlsContext(['tenant_id' => $a], function () {
+        $this->isolateTo(['tenant_id' => $a], function () {
             $this->assertSame(1, DB::table('gadgets')->count());
         });
     }

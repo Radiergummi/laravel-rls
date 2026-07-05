@@ -22,17 +22,17 @@ class TenantIsolationTest extends TestCase
     #[Test]
     public function table_is_protected(): void
     {
-        $this->assertTableProtected('documents');
+        $this->assertTableIsolated('documents');
     }
 
     #[Test]
     public function reads_are_scoped_to_the_acting_tenant(): void
     {
-        $this->withRlsContext(['tenant_id' => $this->a->id], function () {
+        $this->isolateTo(['tenant_id' => $this->a->id], function () {
             $this->assertSame(2, Document::count());
         });
 
-        $this->withRlsContext(['tenant_id' => $this->b->id], function () {
+        $this->isolateTo(['tenant_id' => $this->b->id], function () {
             $this->assertSame(3, Document::count());
         });
     }
@@ -40,13 +40,13 @@ class TenantIsolationTest extends TestCase
     #[Test]
     public function isolation_helper_confirms_no_leak(): void
     {
-        $this->assertRlsIsolates(Document::class, from: $this->a, cannotSee: $this->b);
+        $this->assertIsolates(Document::class, isolatedBy: 'tenant_id', acting: $this->a, cannotSee: $this->b);
     }
 
     #[Test]
     public function cross_tenant_writes_are_rejected(): void
     {
-        $this->assertCannotWriteAcrossTenants(Document::class, actingAs: $this->a, tenant: $this->b->id);
+        $this->assertRejectsForeignWrite(Document::class, isolatedBy: 'tenant_id', acting: $this->a, foreign: $this->b->id);
     }
 
     #[Test]
@@ -73,7 +73,7 @@ class TenantIsolationTest extends TestCase
         DB::statement('create policy documents_public on documents as permissive for select using (true)');
 
         try {
-            $this->withRlsContext(['tenant_id' => $this->a->id], function () {
+            $this->isolateTo(['tenant_id' => $this->a->id], function () {
                 $this->assertSame(2, Document::count(), 'Restrictive policy failed to confine reads');
             });
         } finally {
@@ -91,7 +91,7 @@ class TenantIsolationTest extends TestCase
         $this->a = Tenant::factory()->createOne();
         $this->b = Tenant::factory()->createOne();
 
-        $this->withoutRls('seed', function () {
+        $this->withoutIsolation('seed', function () {
             Document::factory()->count(2)->create(['tenant_id' => $this->a->id]);
             Document::factory()->count(3)->create(['tenant_id' => $this->b->id]);
         });

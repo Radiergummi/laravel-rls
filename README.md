@@ -50,7 +50,7 @@ $table->isolatedBy('region_id', type: 'integer');
 
 // Establish and assert against them
 Rls::isolateTo(['org_id' => $org->id, 'region_id' => 3], fn () => Report::all());
-$this->assertRlsIsolates(Report::class, from: $a, cannotSee: $b, dimension: 'org_id');
+$this->assertIsolates(Report::class, isolatedBy: 'org_id', acting: $a, cannotSee: $b);
 ```
 
 `rls:check` audits every RLS-managed table by the policies it carries, not by a `tenant_id` column, so non-tenant

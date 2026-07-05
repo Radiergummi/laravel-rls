@@ -21,21 +21,9 @@ trait InteractsWithRls
      *
      * @return T
      */
-    protected function withRlsContext(array $context, ?Closure $callback = null): mixed
+    protected function isolateTo(array $context, ?Closure $callback = null): mixed
     {
         return Rls::isolateTo($context, $callback);
-    }
-
-    /**
-     * @template T = mixed
-     *
-     * @param null|Closure(): T $callback
-     *
-     * @return T
-     */
-    protected function actingAsTenant(string|int $id, ?Closure $callback = null): mixed
-    {
-        return Rls::isolateTo(['tenant_id' => $id], $callback);
     }
 
     /**
@@ -45,7 +33,7 @@ trait InteractsWithRls
      *
      * @return T
      */
-    protected function withoutRls(string $reason, Closure $callback): mixed
+    protected function withoutIsolation(string $reason, Closure $callback): mixed
     {
         return Rls::withoutIsolation($reason, $callback);
     }
@@ -53,7 +41,7 @@ trait InteractsWithRls
     /**
      * @throws ExpectationFailedException
      */
-    protected function assertTableProtected(string $table): void
+    protected function assertTableIsolated(string $table): void
     {
         $row = DB::selectOne(
             'select relrowsecurity, relforcerowsecurity from pg_class where relname = ?',
@@ -88,21 +76,19 @@ trait InteractsWithRls
 
     /**
      * @param class-string<Model> $modelClass
-     * @param string              $dimension  the context dimension / model column to scope by
-     *                                        (defaults to tenant_id; pass e.g. 'org_id' for
-     *                                        any other declared dimension)
+     * @param string              $isolatedBy the isolation key / model column to scope by
      */
-    protected function assertRlsIsolates(
+    protected function assertIsolates(
         string $modelClass,
-        mixed $from,
+        string $isolatedBy,
+        mixed $acting,
         mixed $cannotSee,
-        string $dimension = 'tenant_id',
     ): void {
-        $fromId = $this->tenantKey($from);
-        $otherId = $this->tenantKey($cannotSee);
+        $actingId = $this->resolveKey($acting);
+        $otherId = $this->resolveKey($cannotSee);
 
-        Rls::isolateTo([$dimension => $fromId], function () use ($modelClass, $otherId, $dimension) {
-            $leaked = $modelClass::query()->where($dimension, $otherId)->count();
+        Rls::isolateTo([$isolatedBy => $actingId], function () use ($modelClass, $otherId, $isolatedBy) {
+            $leaked = $modelClass::query()->where($isolatedBy, $otherId)->count();
             $this->assertSame(
                 0,
                 $leaked,
@@ -111,7 +97,7 @@ trait InteractsWithRls
         });
     }
 
-    protected function tenantKey(mixed $value): mixed
+    protected function resolveKey(mixed $value): mixed
     {
         if (is_object($value) && method_exists($value, 'getKey')) {
             return $value->getKey();
@@ -122,25 +108,23 @@ trait InteractsWithRls
 
     /**
      * @param class-string<Model> $modelClass
-     * @param string              $dimension  the context dimension / model column to scope by
-     *                                        (defaults to tenant_id; pass e.g. 'org_id' for
-     *                                        any other declared dimension)
+     * @param string              $isolatedBy the isolation key / model column to scope by
      */
-    protected function assertCannotWriteAcrossTenants(
+    protected function assertRejectsForeignWrite(
         string $modelClass,
-        mixed $actingAs,
-        mixed $tenant,
-        string $dimension = 'tenant_id',
+        string $isolatedBy,
+        mixed $acting,
+        mixed $foreign,
     ): void {
-        $actingId = $this->tenantKey($actingAs);
-        $foreignId = $this->tenantKey($tenant);
+        $actingId = $this->resolveKey($acting);
+        $foreignId = $this->resolveKey($foreign);
 
-        Rls::isolateTo([$dimension => $actingId], function () use ($modelClass, $foreignId, $dimension) {
+        Rls::isolateTo([$isolatedBy => $actingId], function () use ($modelClass, $foreignId, $isolatedBy) {
             try {
                 // Run in a savepoint so the expected policy violation rolls back cleanly without
                 // aborting any surrounding transaction.
-                DB::transaction(static function () use ($modelClass, $foreignId, $dimension) {
-                    $modelClass::query()->create([$dimension => $foreignId]);
+                DB::transaction(static function () use ($modelClass, $foreignId, $isolatedBy) {
+                    $modelClass::query()->create([$isolatedBy => $foreignId]);
                 });
 
                 $this->fail('Expected WITH CHECK to reject the cross-context write');

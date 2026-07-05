@@ -27,12 +27,12 @@ class AgnosticDimensionHelpersTest extends TestCase
         $a = (string) Str::uuid();
         $b = (string) Str::uuid();
 
-        $this->withoutRls('seed', function () use ($a, $b) {
+        $this->withoutIsolation('seed', function () use ($a, $b) {
             DB::table('org_things')->insert(['id' => Str::uuid(), 'org_id' => $a]);
             DB::table('org_things')->insert(['id' => Str::uuid(), 'org_id' => $b]);
         });
 
-        $this->assertRlsIsolates(OrgThing::class, from: $a, cannotSee: $b, dimension: 'org_id');
+        $this->assertIsolates(OrgThing::class, isolatedBy: 'org_id', acting: $a, cannotSee: $b);
     }
 
     #[Test]
@@ -41,7 +41,7 @@ class AgnosticDimensionHelpersTest extends TestCase
         $a = (string) Str::uuid();
         $b = (string) Str::uuid();
 
-        $this->assertCannotWriteAcrossTenants(OrgThing::class, actingAs: $a, tenant: $b, dimension: 'org_id');
+        $this->assertRejectsForeignWrite(OrgThing::class, isolatedBy: 'org_id', acting: $a, foreign: $b);
     }
 
     protected function setUp(): void
