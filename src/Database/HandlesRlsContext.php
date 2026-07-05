@@ -126,6 +126,7 @@ trait HandlesRlsContext
         }
 
         $prefix = config('rls.prefix', 'app.');
+        assert(is_string($prefix));
 
         foreach ($this->rlsAppliedKeys as $key) {
             $this->setConfig($prefix . $key, '', false);

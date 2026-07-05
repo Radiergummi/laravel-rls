@@ -31,6 +31,9 @@ use Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired;
 use Radiergummi\LaravelRls\Exceptions\ResolverCollision;
 use Radiergummi\LaravelRls\Schema\RlsSchemaMacros;
 
+use function assert;
+use function is_string;
+
 class RlsServiceProvider extends ServiceProvider
 {
     /**
@@ -119,6 +122,7 @@ class RlsServiceProvider extends ServiceProvider
         if (config('rls.role_model') === 'restricted') {
             $manager->setBypassHandler(function (string $reason, Closure $callback) {
                 $admin = config('rls.admin_connection');
+                assert(is_string($admin) || $admin === null);
 
                 if ($admin === null) {
                     throw AdminConnectionRequired::forReason($reason);
@@ -150,6 +154,7 @@ class RlsServiceProvider extends ServiceProvider
     public function registerConnectionResolver(): void
     {
         $configured = config('rls.connection_class', RlsPostgresConnection::class);
+        assert(is_string($configured));
 
         if (
             self::detectResolverCollision(
