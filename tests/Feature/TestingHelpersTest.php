@@ -8,31 +8,35 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Testing\InteractsWithRls;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
+#[TestDox('Testing Helpers')]
 class TestingHelpersTest extends TestCase
 {
     use InteractsWithRls;
 
     #[Test]
-    public function assert_table_protected_passes(): void
+    #[TestDox('assertTableIsolated() asserts that a table is isolated')]
+    public function assert_table_isolated_passes(): void
     {
-        $this->assertTableProtected('gadgets');
+        $this->assertTableIsolated('gadgets');
     }
 
     #[Test]
-    public function with_rls_context_scopes_reads(): void
+    #[TestDox('isolateTo() scopes reads')]
+    public function isolate_to_scopes_reads(): void
     {
         $a = (string) Str::uuid();
         $b = (string) Str::uuid();
 
-        $this->withoutRls('seed', function () use ($a, $b) {
+        $this->withoutIsolation('seed', function () use ($a, $b) {
             DB::table('gadgets')->insert(['id' => Str::uuid(), 'tenant_id' => $a]);
             DB::table('gadgets')->insert(['id' => Str::uuid(), 'tenant_id' => $b]);
         });
 
-        $this->withRlsContext(['tenant_id' => $a], function () {
+        $this->isolateTo(['tenant_id' => $a], function () {
             $this->assertSame(1, DB::table('gadgets')->count());
         });
     }
@@ -44,7 +48,7 @@ class TestingHelpersTest extends TestCase
         Schema::create('gadgets', function ($table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id');
-            $table->scopedBy('tenant_id');
+            $table->isolatedBy('tenant_id');
         });
     }
 

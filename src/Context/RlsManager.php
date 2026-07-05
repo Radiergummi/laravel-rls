@@ -19,6 +19,11 @@ use function assert;
 use function config;
 use function is_array;
 
+/**
+ * RLS Manager
+ *
+ * @template TUser = mixed
+ */
 class RlsManager
 {
     private const KEY = 'rls';
@@ -29,7 +34,7 @@ class RlsManager
     /** @var null|Closure(string, Closure(): mixed): mixed */
     private ?Closure $bypassHandler = null;
 
-    /** @var null|Closure(mixed): mixed */
+    /** @var null|Closure(TUser): mixed */
     private ?Closure $resolver = null;
 
     private ?ContextSchema $schema = null;
@@ -68,7 +73,7 @@ class RlsManager
     }
 
     /**
-     * Declare the app's context dimensions (opt-in sugar).
+     * Declare the app's isolation keys (opt in sugar).
      *
      * Enables typed PHP accessors (Rls::tenantId()) and typed SQL helper generation.
      *
@@ -86,7 +91,8 @@ class RlsManager
         return $this->schema;
     }
 
-    /** Typed accessors for declared dimensions, e.g. Rls::tenantId().
+    /**
+     * Typed accessors for declared isolation keys, e.g., `Rls::tenantId()`.
      *
      * @param list<mixed> $arguments
      *
@@ -101,7 +107,7 @@ class RlsManager
         }
 
         throw new BadMethodCallException(
-            "Method {$method}() is not a declared RLS context dimension.",
+            "Method {$method}() is not a declared RLS isolation key.",
         );
     }
 
@@ -117,13 +123,13 @@ class RlsManager
         return $stack === [] ? null : $stack[array_key_last($stack)];
     }
 
-    /** @return list<RlsContext> */
+    /**
+     * @return list<RlsContext>
+     */
     private function stack(): array
     {
-        $stack = $this->context->get(self::KEY, []);
-        assert(is_array($stack));
-
-        return $stack;
+        /** @var list<RlsContext> */
+        return $this->context->get(self::KEY, []);
     }
 
     /**
@@ -131,7 +137,7 @@ class RlsManager
      *
      * Called from the publishable RlsServiceProvider.
      *
-     * @param Closure(mixed): mixed $resolver
+     * @param Closure(TUser): mixed $resolver
      */
     public function resolveContextUsing(Closure $resolver): void
     {
@@ -142,6 +148,8 @@ class RlsManager
      * Establish context from a freshly authenticated user, using the app's resolver.
      *
      * A no-op if no resolver is registered, or it yields nothing.
+     *
+     * @param TUser $user
      *
      * @throws InvalidContextValue
      * @throws RuntimeException
@@ -155,6 +163,7 @@ class RlsManager
         $context = ($this->resolver)($user);
 
         if (is_array($context) && $context !== []) {
+            // @var array<string, scalar|null> $context
             $this->push(RlsContext::make($context));
         }
     }
@@ -173,7 +182,7 @@ class RlsManager
     /**
      * Validate context values against the declared schema before they leave PHP.
      *
-     * A malformed value (e.g., a non-UUID for an uuid dimension) would otherwise reach Postgres and
+     * A malformed value (e.g., a non-UUID for an uuid isolation key) would otherwise reach Postgres and
      * throw on every query — a cluster-wide failure.
      *
      * @param array<string, mixed> $values
@@ -187,7 +196,7 @@ class RlsManager
         }
 
         foreach ($values as $key => $value) {
-            // null is the fail-closed sentinel (a tenant-less user, a not-yet-set dimension):
+            // null is the fail-closed sentinel (a context-less user, a not-yet-set isolation key):
             // it serializes to an empty GUC that rls.context() reads as NULL, yielding zero rows —
             // safe, not malformed. Validating it would 500 the Authenticated listener for every
             // such user.
@@ -196,9 +205,9 @@ class RlsManager
             }
 
             if (!$this->schema->matches($key, $value)) {
-                throw InvalidContextValue::forDimension(
+                throw InvalidContextValue::forIsolationKey(
                     $key,
-                    $this->schema->dimensions()[$key],
+                    $this->schema->isolationKeys()[$key],
                     $value,
                 );
             }
@@ -221,7 +230,7 @@ class RlsManager
     }
 
     /**
-     * Override how bypass scopes (system()/withoutRls()) are handled.
+     * Override how bypass scopes (system()/withoutIsolation()) are handled.
      *
      * When unset, bypass pushes a bypass context (owner mode, GUC-driven). In restricted mode the
      * provider installs a handler that routes the callback to the admin connection instead.
@@ -242,6 +251,8 @@ class RlsManager
     }
 
     /**
+     * @param null|scalar $value
+     *
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
@@ -277,15 +288,15 @@ class RlsManager
     /**
      * @template T = mixed
      *
-     * @param array<string, mixed> $context
-     * @param null|Closure(): T    $callback
+     * @param array<string, null|scalar> $context
+     * @param null|Closure(): T          $callback
      *
      * @return ($callback is null ? null : T)
      *
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
-    public function actingAs(array $context, ?Closure $callback = null): mixed
+    public function isolateTo(array $context, ?Closure $callback = null): mixed
     {
         return $this->enter(RlsContext::make($context), $callback);
     }
@@ -327,7 +338,7 @@ class RlsManager
      */
     public function system(string $reason, Closure $callback): mixed
     {
-        return $this->withoutRls($reason, $callback);
+        return $this->withoutIsolation($reason, $callback);
     }
 
     /**
@@ -340,7 +351,7 @@ class RlsManager
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
-    public function withoutRls(string $reason, Closure $callback): mixed
+    public function withoutIsolation(string $reason, Closure $callback): mixed
     {
         $this->events?->dispatch(new RlsBypassed($reason));
 
@@ -353,7 +364,7 @@ class RlsManager
 
     /**
      * Runtime leak canary. On long-lived workers (queue, Octane) a context that was never popped
-     * would silently carry over into the next unit of work — a cross-tenant hazard. Called at each
+     * would silently carry over into the next unit of work — a cross-context hazard. Called at each
      * request/job boundary: if the stack is not empty, it clears the stale context and surfaces it
      * per the configured mode ('log' | 'throw' | 'off').
      *
@@ -367,24 +378,24 @@ class RlsManager
             return;
         }
 
-        // Collect the dimensions across the *whole* stack, not just the current frame: a nested
+        // Collect the isolation keys across the *whole* stack, not just the current frame: a nested
         // leak (multiple unpopped frames) has forget() to clear them all, so the record must name
-        // every leaked dimension, not only the top.
-        $dimensions = [];
+        // every leaked isolation key, not only the top.
+        $isolationKeys = [];
 
         foreach ($this->stack() as $frame) {
-            $dimensions = [...$dimensions, ...array_keys($frame->values())];
+            $isolationKeys = [...$isolationKeys, ...array_keys($frame->values())];
         }
-        $dimensions = array_values(array_unique($dimensions));
+        $isolationKeys = array_values(array_unique($isolationKeys));
         $this->forget();
 
         if ($mode === 'throw') {
-            throw RlsContextLeaked::at($boundary, $dimensions);
+            throw RlsContextLeaked::at($boundary, $isolationKeys);
         }
 
         Log::critical(
             "RLS context leaked into a new {$boundary} and was cleared.",
-            ['boundary' => $boundary, 'dimensions' => $dimensions],
+            ['boundary' => $boundary, 'isolation_keys' => $isolationKeys],
         );
     }
 

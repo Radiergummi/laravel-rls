@@ -12,6 +12,9 @@ parameters:
     checkUninitializedProperties: true
     checkDynamicProperties: true
 
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+
     paths:
         - src
         - tests

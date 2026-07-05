@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Facades\Rls;
-use Radiergummi\LaravelRls\Tests\Jobs\RecordTenantJob;
+use Radiergummi\LaravelRls\Tests\Fixtures\Jobs\RecordTenantJob;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
+#[TestDox('Queued Job Context')]
 class QueuedJobContextTest extends TestCase
 {
     #[Test]
+    #[TestDox('isolateTo() context propagates to a queued job')]
     public function tenant_context_propagates_to_a_queued_job(): void
     {
-        Rls::actingAs(['tenant_id' => 'job-tenant']);
+        Rls::isolateTo(['tenant_id' => 'job-tenant']);
         RecordTenantJob::dispatch();
 
         // Clear the dispatcher's context so a pass can only come from the
@@ -33,21 +37,21 @@ class QueuedJobContextTest extends TestCase
     {
         parent::defineEnvironment($app);
 
-        $app['config']->set('queue.default', 'database');
-        $app['config']->set('queue.connections.database', [
+        config(['queue.default' => 'database']);
+        config(['queue.connections.database' => [
             'driver' => 'database',
             'table' => 'jobs',
             'queue' => 'default',
             'after_commit' => false,
-        ]);
-        $app['config']->set('cache.default', 'array');
+        ]]);
+        config(['cache.default' => 'array']);
     }
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        Schema::create('jobs', function ($table) {
+        Schema::create('jobs', static function (Blueprint $table): void {
             $table->id();
             $table->string('queue')->index();
             $table->longText('payload');

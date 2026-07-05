@@ -2,6 +2,11 @@
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
+         cacheDirectory="vendor/.cache/phpunit"
+         cacheResult="true"
+         stderr="true"
+         testdox="true"
+         testdoxSummary="true"
          colors="true">
     <testsuites>
         <testsuite name="Package">

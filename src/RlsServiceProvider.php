@@ -77,7 +77,7 @@ class RlsServiceProvider extends ServiceProvider
             fn(Authenticated $event) => $manager->establishFromUser($event->user),
         );
 
-        // Bypass observability: every withoutRls()/system() is logged with its reason, so RLS
+        // Bypass observability: every withoutIsolation()/system() is logged with its reason, so RLS
         // bypass stays visible in production logs.
         $this->app->get(Dispatcher::class)->listen(
             RlsBypassed::class,

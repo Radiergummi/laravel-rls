@@ -14,9 +14,7 @@ return new class () extends Migration {
             $table->uuid('tenant_id');
             $table->string('title')->nullable();
             $table->timestamps();
-
-            // @phpstan-ignore method.notFound (scopedBy is a runtime Blueprint macro from RlsSchemaMacros)
-            $table->scopedBy('tenant_id');
+            $table->isolatedBy('tenant_id');
         });
     }
 

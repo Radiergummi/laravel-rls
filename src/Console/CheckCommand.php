@@ -15,9 +15,9 @@ class CheckCommand extends Command
 
     public function handle(): int
     {
-        // Detect managed tables by the artifacts scopedBy() produces — RLS
+        // Detect managed tables by the artifacts isolatedBy() produces — RLS
         // enabled or an isolation policy — rather than by a hardcoded column
-        // name, so any declared dimension (org_id, region, ...) is audited, not
+        // name, so any declared isolation key (org_id, region, ...) is audited, not
         // just tenant_id. A table with *no* RLS setup at all has no agnostic
         // signal and is therefore out of scope for this audit.
         $tables = DB::select(
@@ -47,9 +47,9 @@ class CheckCommand extends Command
             )?->relrowsecurity;
 
             $policies = DB::selectOne(
-                'select count(*) as c from pg_policies where tablename = ?',
+                'select count(*) as count from pg_policies where tablename = ?',
                 [$table->name],
-            )->c;
+            )->count;
 
             if (!$enabled) {
                 $violations[] = "{$table->name}: RLS not enabled";

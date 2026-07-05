@@ -26,7 +26,7 @@ the answer is **yes**, with specific gotchas now captured in code and tests.
 ## Current state
 
 - **Branch:** `main` (pushed to origin; one self-contained commit per feature).
-- **Tests:** `vendor/bin/phpunit` → 97 tests / 181 assertions, all passing.
+- **Tests:** `vendor/bin/phpunit` → 97 tests / 182 assertions, all passing.
 - **P0 hardening complete** and **most of P1 done.** P0: leak canary, context
   value validation, resolver-collision guard, session reset/reconnect,
   read-replica context, real-PgBouncer test. P1: `withDefault()`, bypass
@@ -67,21 +67,21 @@ RlsServiceProvider.php        binds manager, registers connection resolver (in b
                               Authenticated listener, restricted bypass handler, commands
 Context/
   RlsContext.php              immutable value object (values | bypass+reason)
-  RlsManager.php              stack (stored in Laravel Context), actingAs/withoutRls/system,
+  RlsManager.php              stack (stored in Laravel Context), isolateTo/withoutIsolation/system,
                               resolver, defineContext + typed __call accessors
-  ContextSchema.php           declared dimensions -> typed SQL helper generation
+  ContextSchema.php           declared isolation keys -> typed SQL helper generation
 Database/
   HandlesRlsContext.php       THE core trait: beginTransaction injection, run() wrap,
                               applyRlsContext (transaction vs session), fail-loud/explicit guard
   RlsPostgresConnection.php   PostgresConnection + trait
-Schema/RlsSchemaMacros.php    scopedBy / enableRowLevelSecurity / forceRowLevelSecurity
+Schema/RlsSchemaMacros.php    isolatedBy / enableRowLevelSecurity / forceRowLevelSecurity
                               (+ rlsRaw grammar macro)
 Support/RlsFunctions.php      rls.context() / rls.bypass() SQL (single source)
 Http/RlsRequestTransaction.php   opt-in per-request transaction middleware
 Console/CheckCommand.php      rls:check (CI coverage audit)
 Console/AuditCommand.php      rls:audit (bypass call-site scan)
 Testing/InteractsWithRls.php  test helpers, assertions, leak canary
-Exceptions/                   MissingTenantContext, MissingContextBoundary, AdminConnectionRequired
+Exceptions/                   MissingIsolationContext, MissingContextBoundary, AdminConnectionRequired
 Facades/Rls.php
 ```
 
@@ -97,7 +97,7 @@ behavior:
 - `RestrictedIsolationTest` — two real roles, non-owner confined with FORCE off, `system()` routing
 - `ContextBackingTest` — Laravel Context dehydrate/hydrate + bypass stripping
 - `QueuedJobContextTest` — live `queue:work` propagation
-- `TpetryInteropTest` — composability with another connection package
+- `TpetryPostgresqlEnhancedInteropTest` — composability with another connection package
 - `ContextInjectionTest`, `FailLoudGuardTest`, `ExplicitBoundaryTest`,
   `SessionStrategyTest`, `TypedHelpersTest`, `RequestTransactionMiddlewareTest`,
   `AuthContextTest`, `PolicyDslTest`, `Rls{Check,Audit}CommandTest`,

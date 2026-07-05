@@ -7,10 +7,14 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired;
+use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Support\RlsFunctions;
+use RuntimeException;
+use Throwable;
 
 /**
  * Restricted mode with two real roles: tables owned by rls_app (admin), the
@@ -18,42 +22,58 @@ use Radiergummi\LaravelRls\Support\RlsFunctions;
  * restricted connection must see committed data, and RLS must confine it
  * WITHOUT force (force only affects the owner).
  */
+#[TestDox('Restricted Isolation')]
 class RestrictedIsolationTest extends TestCase
 {
     private string $a = '11111111-1111-1111-1111-111111111111';
     private string $b = '22222222-2222-2222-2222-222222222222';
 
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
     #[Test]
+    #[TestDox('The non-owner is confined even though FORCE row security is off')]
     public function force_is_off_yet_the_non_owner_is_confined(): void
     {
         $forced = DB::connection('pgsql_admin')
-            ->selectOne("select relforcerowsecurity as f from pg_class where relname = 'things'")->f;
+            ->selectOne("select relforcerowsecurity as value from pg_class where relname = 'things'")->value;
         $this->assertFalse((bool) $forced, 'sanity: FORCE is off');
 
-        Rls::actingAs(['tenant_id' => $this->a], function () {
-            $this->assertSame(2, DB::table('demo.things')->count());
-        });
+        Rls::isolateTo(
+            ['tenant_id' => $this->a],
+            fn() => $this->assertSame(2, DB::table('demo.things')->count()),
+        );
 
-        Rls::actingAs(['tenant_id' => $this->b], function () {
-            $this->assertSame(1, DB::table('demo.things')->count());
-        });
+        Rls::isolateTo(
+            ['tenant_id' => $this->b],
+            fn() => $this->assertSame(1, DB::table('demo.things')->count()),
+        );
     }
 
     #[Test]
+    #[TestDox('Missing isolation context fails closed with zero rows')]
     public function missing_context_is_fail_closed(): void
     {
         $this->assertSame(0, DB::table('demo.things')->count());
     }
 
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
     #[Test]
+    #[TestDox('system() routes to the admin connection and sees all rows')]
     public function system_routes_to_admin_connection_and_sees_all(): void
     {
-        Rls::system('audit', function () {
-            $this->assertSame(3, DB::table('demo.things')->count());
-        });
+        Rls::system(
+            'audit',
+            fn() => $this->assertSame(3, DB::table('demo.things')->count()),
+        );
     }
 
     #[Test]
+    #[TestDox('system() hard fails without a configured admin connection')]
     public function system_hard_fails_without_an_admin_connection(): void
     {
         config(['rls.admin_connection' => null]);
@@ -63,17 +83,25 @@ class RestrictedIsolationTest extends TestCase
         Rls::system('audit', fn() => null);
     }
 
+    /**
+     * @throws Throwable
+     */
     #[Test]
+    #[TestDox('The restricted role cannot self-escape isolation via the bypass GUC')]
     public function restricted_role_cannot_self_escape_via_bypass_guc(): void
     {
         // As the restricted role, flip the owner-mode escape hatch directly and
         // set a tenant. The restricted isolation policy has no bypass clause, so
         // app.bypass changes nothing: only tenant A's rows remain visible.
-        DB::transaction(function () {
+        DB::transaction(function (): void {
             DB::statement("select set_config('app.bypass', 'on', true)");
             DB::statement("select set_config('app.tenant_id', ?, true)", [$this->a]);
 
-            $this->assertSame(2, DB::table('demo.things')->count(), 'bypass GUC must be inert for a non-owner');
+            $this->assertSame(
+                2,
+                DB::table('demo.things')->count(),
+                'bypass GUC must be inert for a non-owner',
+            );
         });
     }
 
@@ -97,11 +125,11 @@ class RestrictedIsolationTest extends TestCase
                 'sslmode' => 'prefer',
             ];
 
-        $app['config']->set('database.default', 'pgsql');
-        $app['config']->set('database.connections.pgsql', $conn('rls_restricted'));
-        $app['config']->set('database.connections.pgsql_admin', $conn('rls_app'));
-        $app['config']->set('rls.role_model', 'restricted');
-        $app['config']->set('rls.admin_connection', 'pgsql_admin');
+        config(['database.default' => 'pgsql']);
+        config(['database.connections.pgsql' => $conn('rls_restricted')]);
+        config(['database.connections.pgsql_admin' => $conn('rls_app')]);
+        config(['rls.role_model' => 'restricted']);
+        config(['rls.admin_connection' => 'pgsql_admin']);
     }
 
     protected function setUp(): void

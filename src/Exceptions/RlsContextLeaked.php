@@ -8,15 +8,15 @@ use RuntimeException;
 
 class RlsContextLeaked extends RuntimeException
 {
-    /** @param list<string> $dimensions */
-    public static function at(string $boundary, array $dimensions): self
+    /** @param list<string> $isolationKeys */
+    public static function at(string $boundary, array $isolationKeys): self
     {
-        $keys = $dimensions === [] ? '(bypass scope)' : implode(', ', $dimensions);
+        $keys = $isolationKeys === [] ? '(bypass scope)' : implode(', ', $isolationKeys);
 
         return new self(
             "RLS context leaked into a new {$boundary} (the context stack was not empty at"
-            . " its start). Leaked dimensions: {$keys}. This means a previous {$boundary} on this"
-            . ' worker did not clear its context, which is a cross-tenant isolation hazard.'
+            . " its start). Leaked isolation keys: {$keys}. This means a previous {$boundary} on this"
+            . ' worker did not clear its context, which is a cross-context isolation hazard.'
             . ' The stale context has been cleared.',
         );
     }

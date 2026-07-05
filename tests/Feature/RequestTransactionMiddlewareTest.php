@@ -6,12 +6,15 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Http\RlsRequestTransaction;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
+#[TestDox('Request Transaction Middleware')]
 class RequestTransactionMiddlewareTest extends TestCase
 {
     #[Test]
+    #[TestDox('The middleware opens a transaction for the request')]
     public function middleware_opens_a_transaction_for_the_request(): void
     {
         // RefreshDatabase holds the connection at level 1 as a baseline.

@@ -9,7 +9,7 @@ use Stringable;
 
 class InvalidContextValue extends InvalidArgumentException
 {
-    public static function forDimension(string $name, string $type, mixed $value): self
+    public static function forIsolationKey(string $name, string $type, mixed $value): self
     {
         $given = is_scalar($value) || $value instanceof Stringable
             ? (string) $value

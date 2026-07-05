@@ -11,7 +11,7 @@ class AdminConnectionRequired extends RuntimeException
     public static function forReason(string $reason): self
     {
         return new self(
-            'Rls::system()/withoutRls() requires an admin connection in restricted mode '
+            'Rls::system()/withoutIsolation() requires an admin connection in restricted mode '
             . "(reason: \"{$reason}\"). Set rls.admin_connection to a privileged connection.",
         );
     }

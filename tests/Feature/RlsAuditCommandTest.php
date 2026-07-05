@@ -6,16 +6,19 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Testing\PendingCommand;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
 use function assert;
 
+#[TestDox('rls:audit Command')]
 class RlsAuditCommandTest extends TestCase
 {
     #[Test]
+    #[TestDox('rls:audit reports each bypass call site found')]
     public function reports_bypass_call_sites(): void
     {
-        $path = __DIR__ . '/../fixtures/audit';
+        $path = __DIR__ . '/../Fixtures/Audit';
 
         $result = $this->artisan('rls:audit', ['--path' => [$path]]);
         assert($result instanceof PendingCommand);
@@ -26,9 +29,10 @@ class RlsAuditCommandTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('rls:audit fails when the bypass count exceeds the threshold')]
     public function fails_when_bypass_count_exceeds_threshold(): void
     {
-        $path = __DIR__ . '/../fixtures/audit'; // 2 call sites
+        $path = __DIR__ . '/../Fixtures/Audit'; // 2 call sites
 
         $result = $this->artisan('rls:audit', [
             '--path' => [$path],
@@ -39,9 +43,10 @@ class RlsAuditCommandTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('rls:audit passes when the bypass count is within the threshold')]
     public function passes_when_bypass_count_is_within_threshold(): void
     {
-        $path = __DIR__ . '/../fixtures/audit'; // 2 call sites
+        $path = __DIR__ . '/../Fixtures/Audit'; // 2 call sites
 
         $result = $this->artisan('rls:audit', [
             '--path' => [$path],

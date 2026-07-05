@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 use Stringable;
 
 /**
- * Declares the app's context dimensions and their Postgres types, used to generate typed SQL
+ * Declares the app's isolation keys and their Postgres types, used to generate typed SQL
  * helpers (rls.tenant_id()) and typed PHP accessors.
  */
 class ContextSchema
@@ -18,7 +18,7 @@ class ContextSchema
      *
      * @var array<string, string>
      */
-    private array $dimensions = [];
+    private array $isolationKeys = [];
 
     public function uuid(string $name): self
     {
@@ -27,7 +27,7 @@ class ContextSchema
 
     private function add(string $name, string $type): self
     {
-        $this->dimensions[$name] = $type;
+        $this->isolationKeys[$name] = $type;
 
         return $this;
     }
@@ -54,17 +54,17 @@ class ContextSchema
 
     public function has(string $name): bool
     {
-        return isset($this->dimensions[$name]);
+        return isset($this->isolationKeys[$name]);
     }
 
     /**
-     * Whether the given value is a well-formed instance of the dimension's declared Postgres type.
+     * Whether the given value is a well-formed instance of the isolation key's declared Postgres type.
      *
-     * Undeclared dimensions are unconstrained.
+     * Undeclared isolation keys are unconstrained.
      */
     public function matches(string $name, mixed $value): bool
     {
-        $type = $this->dimensions[$name] ?? null;
+        $type = $this->isolationKeys[$name] ?? null;
 
         if ($type === null) {
             return true;
@@ -101,13 +101,13 @@ class ContextSchema
     /**
      * @return array<string, string>
      */
-    public function dimensions(): array
+    public function isolationKeys(): array
     {
-        return $this->dimensions;
+        return $this->isolationKeys;
     }
 
     /**
-     * Generate a typed helper per dimension, e.g., `rls.tenant_id()` returns
+     * Generate a typed helper per isolation key, e.g., `rls.tenant_id()` returns
      * `uuid := rls.context('tenant_id')::uuid`.
      *
      * @return array<int, string>
@@ -116,7 +116,7 @@ class ContextSchema
     {
         $statements = [];
 
-        foreach ($this->dimensions as $name => $type) {
+        foreach ($this->isolationKeys as $name => $type) {
             $statements[] = sprintf(
                 'create or replace function rls.%s() returns %s language sql stable as $$'
                 . " select rls.context('%s')::%s $$",

@@ -12,7 +12,7 @@ class SyncCommand extends Command
 {
     protected $signature = 'rls:sync';
 
-    protected $description = 'Regenerate the typed rls.<dimension>() SQL helpers from the declared ContextSchema';
+    protected $description = 'Regenerate the typed rls.<key>() SQL helpers from the declared isolation keys';
 
     public function handle(RlsManager $manager): int
     {

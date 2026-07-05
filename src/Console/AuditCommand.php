@@ -22,7 +22,7 @@ class AuditCommand extends Command
     {
         $paths = $this->option('path') ?: [base_path('app')];
         assert(is_array($paths));
-        $pattern = '/(?:Rls::|\$?this->|->)\s*(withoutRls|system)\s*\(/';
+        $pattern = '/(?:Rls::|\$?this->|->)\s*(withoutIsolation|system)\s*\(/';
 
         $findings = [];
 

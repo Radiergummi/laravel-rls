@@ -5,24 +5,28 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use PHPUnit\Framework\TestCase;
 use Radiergummi\LaravelRls\Context\RlsContext;
 
+#[TestDox('RLS Context')]
 class RlsContextTest extends TestCase
 {
     #[Test]
+    #[TestDox('make() stores values retrievable via get() and has()')]
     public function holds_and_reads_values(): void
     {
-        $c = RlsContext::make(['tenant_id' => 'abc', 'user_id' => 7]);
-        $this->assertSame('abc', $c->get('tenant_id'));
-        $this->assertSame(7, $c->get('user_id'));
-        $this->assertTrue($c->has('tenant_id'));
-        $this->assertFalse($c->has('missing'));
-        $this->assertNull($c->get('missing'));
-        $this->assertFalse($c->isBypass());
+        $context = RlsContext::make(['tenant_id' => 'abc', 'user_id' => 7]);
+        $this->assertSame('abc', $context->get('tenant_id'));
+        $this->assertSame(7, $context->get('user_id'));
+        $this->assertTrue($context->has('tenant_id'));
+        $this->assertFalse($context->has('missing'));
+        $this->assertNull($context->get('missing'));
+        $this->assertFalse($context->isBypass());
     }
 
     #[Test]
+    #[TestDox('with() returns a new instance without mutating the original')]
     public function with_returns_new_instance_without_mutating(): void
     {
         $a = RlsContext::make(['tenant_id' => '1']);
@@ -34,11 +38,12 @@ class RlsContextTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('bypass() creates a bypass context carrying a reason and no isolation values')]
     public function bypass_context(): void
     {
-        $c = RlsContext::bypass('nightly-export');
-        $this->assertTrue($c->isBypass());
-        $this->assertSame('nightly-export', $c->reason());
-        $this->assertSame([], $c->values());
+        $context = RlsContext::bypass('nightly-export');
+        $this->assertTrue($context->isBypass());
+        $this->assertSame('nightly-export', $context->reason());
+        $this->assertSame([], $context->values());
     }
 }

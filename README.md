@@ -1,7 +1,7 @@
 # laravel-rls
 
 PostgreSQL Row-Level Security as a first-class, ergonomic Laravel feature. Set your scope context once
-(`Rls::actingAs(...)`) — scoped by a tenant, an organization, a region, or any dimension you declare — and the database
+(`Rls::isolateTo(...)`) — scoped by a tenant, an organization, a region, or any dimension you declare — and the database
 itself confines every read *and* write, so a forgotten `WHERE tenant_id = …` can't leak data.
 
 > **Status: proof of concept.** This is a validated PoC, not a production
@@ -13,13 +13,13 @@ itself confines every read *and* write, so a forgotten `WHERE tenant_id = …` c
 
 ```php
 // Establish context — never touch GUCs, SET LOCAL, or set_config() yourself.
-Rls::actingAs(['tenant_id' => $tenant->id], function () {
+Rls::isolateTo(['tenant_id' => $tenant->id], function () {
     Document::all();          // only this tenant's rows, enforced by Postgres
     Document::create([...]);  // WITH CHECK rejects writing another tenant's id
 });
 
 // Bypass, deliberately and visibly (reason required, always logged/auditable).
-Rls::withoutRls('nightly-export', fn () => Document::all());
+Rls::withoutIsolation('nightly-export', fn () => Document::all());
 ```
 
 ```php
@@ -28,7 +28,7 @@ Schema::create('documents', function (Blueprint $table) {
     $table->uuid('id')->primary();
     $table->uuid('tenant_id');
     $table->string('title');
-    $table->scopedBy('tenant_id');   // ENABLE (+FORCE in owner mode) + RESTRICTIVE
+    $table->isolatedBy('tenant_id');   // ENABLE (+FORCE in owner mode) + RESTRICTIVE
 });                                   // isolation policy with USING + WITH CHECK
 ```
 
@@ -38,19 +38,19 @@ injects transparently — the same abstraction Supabase gives you with `auth.uid
 ## Any dimension, not just tenants
 
 The context is a bag of generic named dimensions — `tenant_id` is only the running example. Declare whatever your app
-scopes by and everything downstream (`scopedBy`, `rls:check`, the test helpers) behaves the same:
+scopes by and everything downstream (`isolatedBy`, `rls:check`, the test helpers) behaves the same:
 
 ```php
 // Declare your dimensions (opt-in — enables typed accessors + value validation)
-Rls::defineContext(fn ($c) => $c->uuid('org_id')->integer('region_id'));
+Rls::defineContext(fn (ContextSchema $context) => $context->uuid('org_id')->integer('region_id'));
 
 // Scope tables by any column / type
-$table->scopedBy('org_id');
-$table->scopedBy('region_id', type: 'integer');
+$table->isolatedBy('org_id');
+$table->isolatedBy('region_id', type: 'integer');
 
 // Establish and assert against them
-Rls::actingAs(['org_id' => $org->id, 'region_id' => 3], fn () => Report::all());
-$this->assertRlsIsolates(Report::class, from: $a, cannotSee: $b, dimension: 'org_id');
+Rls::isolateTo(['org_id' => $org->id, 'region_id' => 3], fn () => Report::all());
+$this->assertIsolates(Report::class, isolatedBy: 'org_id', acting: $a, cannotSee: $b);
 ```
 
 `rls:check` audits every RLS-managed table by the policies it carries, not by a `tenant_id` column, so non-tenant
@@ -111,7 +111,7 @@ Rls::resolveContextUsing(fn () => Tenant::current()
 
 Those packages switch tenants via their own events rather than Laravel's
 `Authenticated` event, so also re-establish context on their tenant-initialized hook (e.g. stancl's
-`TenancyInitialized`) with `Rls::actingAs(...)`. A first-class bridge for this is on the backlog; the recipe above works
+`TenancyInitialized`) with `Rls::isolateTo(...)`. A first-class bridge for this is on the backlog; the recipe above works
 today.
 
 ## Key findings (things the PoC taught us)
@@ -119,7 +119,7 @@ today.
 - **RLS is a no-op for the table owner unless FORCE** — and superusers/BYPASSRLS roles skip it entirely. Tests *must*
   connect as a non-superuser or they falsely pass. `owner` mode stops developer mistakes; only `restricted` mode
   contains a compromised credential or SQL injection.
-- **A RESTRICTIVE-only table shows nothing** — you need a permissive base policy too. `scopedBy()` emits both
+- **A RESTRICTIVE-only table shows nothing** — you need a permissive base policy too. `isolatedBy()` emits both
   (permissive `USING (true)` + RESTRICTIVE isolation).
 - **Transaction-local GUCs have no "unset"** — context pop blanks keys to `''`, and `rls.context()` reads
   `nullif(..., '')` as NULL (fail-closed).

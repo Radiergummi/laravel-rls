@@ -681,7 +681,7 @@ git commit -m "feat: stack-based RlsManager with bypass scopes and facade"
 ### Task 4: SQL helper functions and installer
 
 **Files:**
-- Create: `src/Support/RlsFunctions.php`, `tests/database/migrations/0001_01_01_000000_install_rls_functions.php`
+- Create: `src/Support/RlsFunctions.php`, `../../../tests/Fixtures/database/migrations/0001_01_01_000000_install_rls_functions.php`
 - Test: `tests/Feature/RlsFunctionsTest.php`
 
 **Interfaces:**
@@ -795,7 +795,7 @@ class RlsFunctions
 
 - [ ] **Step 4: Write the migration**
 
-`tests/database/migrations/0001_01_01_000000_install_rls_functions.php`:
+`../../../tests/Fixtures/database/migrations/0001_01_01_000000_install_rls_functions.php`:
 
 ```php
 <?php
@@ -1396,7 +1396,7 @@ git commit -m "feat: InteractsWithRls test helpers, assertions, and leak canary"
 ### Task 8: End-to-end tenant isolation feature test
 
 **Files:**
-- Create: `tests/Models/Tenant.php`, `tests/Models/Document.php`, `tests/database/factories/TenantFactory.php`, `tests/database/factories/DocumentFactory.php`, `tests/database/migrations/0001_01_01_000001_create_tenants_table.php`, `tests/database/migrations/0001_01_01_000002_create_documents_table.php`
+- Create: `tests/Models/Tenant.php`, `tests/Models/Document.php`, `../../../tests/Fixtures/database/factories/TenantFactory.php`, `../../../tests/Fixtures/database/factories/DocumentFactory.php`, `../../../tests/Fixtures/database/migrations/0001_01_01_000001_create_tenants_table.php`, `../../../tests/Fixtures/database/migrations/0001_01_01_000002_create_documents_table.php`
 - Test: `tests/Feature/TenantIsolationTest.php`
 
 **Interfaces:**
@@ -1405,7 +1405,7 @@ git commit -m "feat: InteractsWithRls test helpers, assertions, and leak canary"
 
 - [ ] **Step 1: Write the tenants and documents migrations**
 
-`tests/database/migrations/0001_01_01_000001_create_tenants_table.php`:
+`../../../tests/Fixtures/database/migrations/0001_01_01_000001_create_tenants_table.php`:
 
 ```php
 <?php
@@ -1432,7 +1432,7 @@ return new class extends Migration
 };
 ```
 
-`tests/database/migrations/0001_01_01_000002_create_documents_table.php`:
+`../../../tests/Fixtures/database/migrations/0001_01_01_000002_create_documents_table.php`:
 
 ```php
 <?php
@@ -1518,15 +1518,14 @@ class Document extends Model
 
 - [ ] **Step 3: Write the factories**
 
-`tests/database/factories/TenantFactory.php`:
+`../../../tests/Fixtures/database/factories/TenantFactory.php`:
 
 ```php
 <?php
 
 namespace Radiergummi\LaravelRls\Tests\Database\Factories;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
-use Radiergummi\LaravelRls\Tests\Models\Tenant;
+use Fixtures\Models\Tenant;use Illuminate\Database\Eloquent\Factories\Factory;
 
 class TenantFactory extends Factory
 {
@@ -1539,15 +1538,14 @@ class TenantFactory extends Factory
 }
 ```
 
-`tests/database/factories/DocumentFactory.php`:
+`../../../tests/Fixtures/database/factories/DocumentFactory.php`:
 
 ```php
 <?php
 
 namespace Radiergummi\LaravelRls\Tests\Database\Factories;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
-use Radiergummi\LaravelRls\Tests\Models\Document;
+use Fixtures\Models\Document;use Illuminate\Database\Eloquent\Factories\Factory;
 
 class DocumentFactory extends Factory
 {
@@ -1569,12 +1567,7 @@ class DocumentFactory extends Factory
 
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
-use Illuminate\Support\Facades\DB;
-use Radiergummi\LaravelRls\Facades\Rls;
-use Radiergummi\LaravelRls\Testing\InteractsWithRls;
-use Radiergummi\LaravelRls\Tests\Models\Document;
-use Radiergummi\LaravelRls\Tests\Models\Tenant;
-use Radiergummi\LaravelRls\Tests\TestCase;
+use Fixtures\Models\Document;use Fixtures\Models\Tenant;use Illuminate\Support\Facades\DB;use Radiergummi\LaravelRls\Facades\Rls;use Radiergummi\LaravelRls\Testing\InteractsWithRls;use Radiergummi\LaravelRls\Tests\TestCase;
 
 class TenantIsolationTest extends TestCase
 {

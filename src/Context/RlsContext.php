@@ -7,7 +7,7 @@ namespace Radiergummi\LaravelRls\Context;
 final readonly class RlsContext
 {
     /**
-     * @param array<string, mixed> $values
+     * @param array<array-key, null|scalar> $values
      */
     private function __construct(
         private array $values,
@@ -16,7 +16,7 @@ final readonly class RlsContext
     ) {}
 
     /**
-     * @param array<string, mixed> $values
+     * @param array<array-key, null|scalar> $values
      */
     public static function make(array $values): self
     {
@@ -29,13 +29,16 @@ final readonly class RlsContext
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<array-key, null|scalar>
      */
     public function values(): array
     {
         return $this->values;
     }
 
+    /**
+     * @return null|scalar
+     */
     public function get(string $key): mixed
     {
         return $this->values[$key] ?? null;
@@ -47,11 +50,15 @@ final readonly class RlsContext
     }
 
     /**
-     * @param array<string, mixed> $values
+     * @param array<array-key, null|scalar> $values
      */
     public function with(array $values): self
     {
-        return new self(array_merge($this->values, $values), $this->bypass, $this->reason);
+        return new self(
+            array_merge($this->values, $values),
+            $this->bypass,
+            $this->reason,
+        );
     }
 
     public function isBypass(): bool
