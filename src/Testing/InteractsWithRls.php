@@ -13,16 +13,38 @@ use Radiergummi\LaravelRls\Facades\Rls;
 
 trait InteractsWithRls
 {
+    /**
+     * @template T = mixed
+     *
+     * @param array<string, mixed> $context
+     * @param null|Closure(): T    $callback
+     *
+     * @return T
+     */
     protected function withRlsContext(array $context, ?Closure $callback = null): mixed
     {
         return Rls::actingAs($context, $callback);
     }
 
+    /**
+     * @template T = mixed
+     *
+     * @param null|Closure(): T $callback
+     *
+     * @return T
+     */
     protected function actingAsTenant(string|int $id, ?Closure $callback = null): mixed
     {
         return Rls::actingAs(['tenant_id' => $id], $callback);
     }
 
+    /**
+     * @template T
+     *
+     * @param Closure(): T $callback
+     *
+     * @return T
+     */
     protected function withoutRls(string $reason, Closure $callback): mixed
     {
         return Rls::withoutRls($reason, $callback);
@@ -70,8 +92,12 @@ trait InteractsWithRls
      *                                        (defaults to tenant_id; pass e.g. 'org_id' for
      *                                        any other declared dimension)
      */
-    protected function assertRlsIsolates(string $modelClass, mixed $from, mixed $cannotSee, string $dimension = 'tenant_id'): void
-    {
+    protected function assertRlsIsolates(
+        string $modelClass,
+        mixed $from,
+        mixed $cannotSee,
+        string $dimension = 'tenant_id',
+    ): void {
         $fromId = $this->tenantKey($from);
         $otherId = $this->tenantKey($cannotSee);
 

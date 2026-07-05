@@ -11,6 +11,7 @@ use Radiergummi\LaravelRls\Tests\Database\Factories\TenantFactory;
 
 class Tenant extends Model
 {
+    /** @use HasFactory<TenantFactory> */
     use HasFactory;
     use HasUuids;
 

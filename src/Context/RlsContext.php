@@ -6,12 +6,18 @@ namespace Radiergummi\LaravelRls\Context;
 
 final readonly class RlsContext
 {
+    /**
+     * @param array<string, mixed> $values
+     */
     private function __construct(
         private array $values,
         private bool $bypass = false,
         private ?string $reason = null,
     ) {}
 
+    /**
+     * @param array<string, mixed> $values
+     */
     public static function make(array $values): self
     {
         return new self($values);
@@ -22,6 +28,9 @@ final readonly class RlsContext
         return new self([], true, $reason);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function values(): array
     {
         return $this->values;
@@ -37,6 +46,9 @@ final readonly class RlsContext
         return array_key_exists($key, $this->values);
     }
 
+    /**
+     * @param array<string, mixed> $values
+     */
     public function with(array $values): self
     {
         return new self(array_merge($this->values, $values), $this->bypass, $this->reason);

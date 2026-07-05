@@ -11,6 +11,7 @@ use Radiergummi\LaravelRls\Tests\Database\Factories\DocumentFactory;
 
 class Document extends Model
 {
+    /** @use HasFactory<DocumentFactory> */
     use HasFactory;
     use HasUuids;
 

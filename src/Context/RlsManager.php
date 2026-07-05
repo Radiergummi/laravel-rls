@@ -21,10 +21,13 @@ class RlsManager
 {
     private const KEY = 'rls';
 
+    /** @var null|Closure(): void */
     private ?Closure $sync = null;
 
+    /** @var null|Closure(string, Closure(): mixed): mixed */
     private ?Closure $bypassHandler = null;
 
+    /** @var null|Closure(mixed): mixed */
     private ?Closure $resolver = null;
 
     private ?ContextSchema $schema = null;
@@ -49,7 +52,7 @@ class RlsManager
         $filtered = array_values(
             array_filter(
                 $stack,
-                static fn(RlsContext $context): bool => ! $context->isBypass(),
+                static fn(RlsContext $context): bool => !$context->isBypass(),
             ),
         );
 
@@ -64,6 +67,8 @@ class RlsManager
      * Declare the app's context dimensions (opt-in sugar).
      *
      * Enables typed PHP accessors (Rls::tenantId()) and typed SQL helper generation.
+     *
+     * @param Closure(ContextSchema): mixed $callback
      */
     public function defineContext(Closure $callback): void
     {
@@ -78,6 +83,8 @@ class RlsManager
     }
 
     /** Typed accessors for declared dimensions, e.g. Rls::tenantId().
+     *
+     * @param list<mixed> $arguments
      *
      * @throws BadMethodCallException
      */
@@ -116,6 +123,8 @@ class RlsManager
      * Register the app's identity -> context mapping.
      *
      * Called from the publishable RlsServiceProvider.
+     *
+     * @param Closure(mixed): mixed $resolver
      */
     public function resolveContextUsing(Closure $resolver): void
     {
@@ -160,6 +169,8 @@ class RlsManager
      * A malformed value (e.g., a non-UUID for an uuid dimension) would otherwise reach Postgres and
      * throw on every query — a cluster-wide failure.
      *
+     * @param array<string, mixed> $values
+     *
      * @throws InvalidContextValue
      */
     private function validate(array $values): void
@@ -177,7 +188,7 @@ class RlsManager
                 continue;
             }
 
-            if (! $this->schema->matches($key, $value)) {
+            if (!$this->schema->matches($key, $value)) {
                 throw InvalidContextValue::forDimension(
                     $key,
                     $this->schema->dimensions()[$key],
@@ -194,6 +205,9 @@ class RlsManager
         }
     }
 
+    /**
+     * @param null|Closure(): void $sync
+     */
     public function setSyncCallback(?Closure $sync): void
     {
         $this->sync = $sync;
@@ -204,12 +218,17 @@ class RlsManager
      *
      * When unset, bypass pushes a bypass context (owner mode, GUC-driven). In restricted mode the
      * provider installs a handler that routes the callback to the admin connection instead.
+     *
+     * @param null|Closure(string, Closure(): mixed): mixed $handler
      */
     public function setBypassHandler(?Closure $handler): void
     {
         $this->bypassHandler = $handler;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function context(): array
     {
         return $this->current()?->values() ?? [];
@@ -249,6 +268,12 @@ class RlsManager
     }
 
     /**
+     * @template T = mixed
+     * @param array<string, mixed> $context
+     * @param null|Closure(): T $callback
+     *
+     * @return T
+     *
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
@@ -258,6 +283,10 @@ class RlsManager
     }
 
     /**
+     * @template T
+     * @param null|Closure(): T $callback
+     *
+     * @return T
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
@@ -277,6 +306,10 @@ class RlsManager
     }
 
     /**
+     * @template T
+     * @param Closure(): T $callback
+     *
+     * @return T
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
@@ -286,6 +319,10 @@ class RlsManager
     }
 
     /**
+     * @template T
+     * @param Closure(): T $callback
+     *
+     * @return T
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
@@ -312,7 +349,7 @@ class RlsManager
     {
         $mode = config('rls.leak_canary', 'log');
 
-        if ($mode === 'off' || ! $this->hasContext()) {
+        if ($mode === 'off' || !$this->hasContext()) {
             return;
         }
 

@@ -151,6 +151,9 @@ trait HandlesRlsContext
     }
 
     /**
+     * @param array<int|string, mixed> $bindings
+     * @param Closure(string, array<int|string, mixed>): mixed $callback
+     *
      * @throws MissingTenantContext
      * @throws Throwable
      * @throws MissingContextBoundary

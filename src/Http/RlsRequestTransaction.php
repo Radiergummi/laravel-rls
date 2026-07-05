@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Http;
 
 use Closure;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -14,7 +15,10 @@ use Illuminate\Support\Facades\DB;
  */
 class RlsRequestTransaction
 {
-    public function handle($request, Closure $next): mixed
+    /**
+     * @param Closure(Request): mixed $next
+     */
+    public function handle(Request $request, Closure $next): mixed
     {
         return DB::transaction(static fn() => $next($request));
     }

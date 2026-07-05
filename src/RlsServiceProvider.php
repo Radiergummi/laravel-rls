@@ -35,6 +35,8 @@ class RlsServiceProvider extends ServiceProvider
 {
     /**
      * The pgsql resolver we registered, tracked, so we recognize our own.
+     *
+     * @var null|Closure(mixed, string, string, array<string, mixed>): mixed
      */
     private static ?Closure $ownResolver = null;
 
@@ -172,6 +174,9 @@ class RlsServiceProvider extends ServiceProvider
      * A collision is a foreign resolver already in place (not our own, tracked by identity) while
      * connection_class is still the default — meaning we would overwrite the other package rather
      * than compose with it.
+     *
+     * @param null|Closure(mixed, string, string, array<string, mixed>): mixed $existing
+     * @param null|Closure(mixed, string, string, array<string, mixed>): mixed $own
      *
      * @internal
      */
