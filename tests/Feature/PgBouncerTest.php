@@ -28,7 +28,7 @@ class PgBouncerTest extends TestCase
     #[Test]
     public function transaction_local_context_reaches_queries_through_pgbouncer(): void
     {
-        Rls::actingAs(['tenant_id' => 'bouncer-tenant']);
+        Rls::isolateTo(['tenant_id' => 'bouncer-tenant']);
 
         DB::transaction(function () {
             $this->assertSame(
@@ -41,7 +41,7 @@ class PgBouncerTest extends TestCase
     #[Test]
     public function each_transaction_gets_its_own_context_under_pooling(): void
     {
-        Rls::actingAs(['tenant_id' => 'first']);
+        Rls::isolateTo(['tenant_id' => 'first']);
         DB::transaction(fn()
             => $this->assertSame(
                 'first',
@@ -49,7 +49,7 @@ class PgBouncerTest extends TestCase
             ));
         Rls::forget();
 
-        Rls::actingAs(['tenant_id' => 'second']);
+        Rls::isolateTo(['tenant_id' => 'second']);
         DB::transaction(fn()
             => $this->assertSame(
                 'second',
@@ -60,7 +60,7 @@ class PgBouncerTest extends TestCase
     #[Test]
     public function committed_transaction_context_does_not_leak_on_the_pool(): void
     {
-        Rls::actingAs(['tenant_id' => 'ephemeral']);
+        Rls::isolateTo(['tenant_id' => 'ephemeral']);
 
         DB::transaction(fn()
             => $this->assertSame(

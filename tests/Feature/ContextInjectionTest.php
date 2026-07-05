@@ -15,14 +15,14 @@ class ContextInjectionTest extends TestCase
     public function context_reaches_db_within_refresh_database_transaction(): void
     {
         // RefreshDatabase already opened a transaction before this body ran.
-        Rls::actingAs(['tenant_id' => 'abc']);
+        Rls::isolateTo(['tenant_id' => 'abc']);
         $this->assertSame('abc', DB::selectOne("select rls.context('tenant_id') as v")->v);
     }
 
     #[Test]
     public function scoped_context_applies_then_clears(): void
     {
-        Rls::actingAs(['tenant_id' => 'xyz'], function () {
+        Rls::isolateTo(['tenant_id' => 'xyz'], function () {
             $this->assertSame('xyz', DB::selectOne("select rls.context('tenant_id') as v")->v);
         });
         $this->assertNull(DB::selectOne("select rls.context('tenant_id') as v")->v);

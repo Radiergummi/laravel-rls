@@ -1,7 +1,7 @@
 # laravel-rls
 
 PostgreSQL Row-Level Security as a first-class, ergonomic Laravel feature. Set your scope context once
-(`Rls::actingAs(...)`) — scoped by a tenant, an organization, a region, or any dimension you declare — and the database
+(`Rls::isolateTo(...)`) — scoped by a tenant, an organization, a region, or any dimension you declare — and the database
 itself confines every read *and* write, so a forgotten `WHERE tenant_id = …` can't leak data.
 
 > **Status: proof of concept.** This is a validated PoC, not a production
@@ -13,7 +13,7 @@ itself confines every read *and* write, so a forgotten `WHERE tenant_id = …` c
 
 ```php
 // Establish context — never touch GUCs, SET LOCAL, or set_config() yourself.
-Rls::actingAs(['tenant_id' => $tenant->id], function () {
+Rls::isolateTo(['tenant_id' => $tenant->id], function () {
     Document::all();          // only this tenant's rows, enforced by Postgres
     Document::create([...]);  // WITH CHECK rejects writing another tenant's id
 });
@@ -49,7 +49,7 @@ $table->isolatedBy('org_id');
 $table->isolatedBy('region_id', type: 'integer');
 
 // Establish and assert against them
-Rls::actingAs(['org_id' => $org->id, 'region_id' => 3], fn () => Report::all());
+Rls::isolateTo(['org_id' => $org->id, 'region_id' => 3], fn () => Report::all());
 $this->assertRlsIsolates(Report::class, from: $a, cannotSee: $b, dimension: 'org_id');
 ```
 
@@ -111,7 +111,7 @@ Rls::resolveContextUsing(fn () => Tenant::current()
 
 Those packages switch tenants via their own events rather than Laravel's
 `Authenticated` event, so also re-establish context on their tenant-initialized hook (e.g. stancl's
-`TenancyInitialized`) with `Rls::actingAs(...)`. A first-class bridge for this is on the backlog; the recipe above works
+`TenancyInitialized`) with `Rls::isolateTo(...)`. A first-class bridge for this is on the backlog; the recipe above works
 today.
 
 ## Key findings (things the PoC taught us)

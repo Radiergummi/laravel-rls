@@ -40,7 +40,7 @@ class TypedHelpersTest extends TestCase
 
         $uuid = '22222222-2222-2222-2222-222222222222';
 
-        Rls::actingAs(['tenant_id' => $uuid], function () use ($uuid) {
+        Rls::isolateTo(['tenant_id' => $uuid], function () use ($uuid) {
             // tenantId() is a dynamic accessor via RlsManager::__call (snake_cased
             // to the 'tenant_id' dimension) — no static signature to resolve.
             // @phpstan-ignore staticMethod.notFound (magic __call accessor for a declared dimension)

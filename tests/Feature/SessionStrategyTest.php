@@ -27,7 +27,7 @@ class SessionStrategyTest extends TestCase
     {
         $this->assertSame(0, DB::transactionLevel());
 
-        Rls::actingAs(['tenant_id' => 'session-tenant']);
+        Rls::isolateTo(['tenant_id' => 'session-tenant']);
 
         // Two separate bare queries (no transaction) both see the session GUC.
         $this->assertSame('session-tenant', DB::selectOne("select rls.context('tenant_id') as v")->v);
@@ -38,7 +38,7 @@ class SessionStrategyTest extends TestCase
     #[Test]
     public function reset_session_context_clears_the_session_guc(): void
     {
-        Rls::actingAs(['tenant_id' => 'to-be-cleared']);
+        Rls::isolateTo(['tenant_id' => 'to-be-cleared']);
         $this->assertSame('to-be-cleared', DB::selectOne("select rls.context('tenant_id') as v")->v);
 
         $connection = DB::connection();
@@ -54,7 +54,7 @@ class SessionStrategyTest extends TestCase
     #[Test]
     public function reconnect_reestablishes_session_context(): void
     {
-        Rls::actingAs(['tenant_id' => 'survives-reconnect']);
+        Rls::isolateTo(['tenant_id' => 'survives-reconnect']);
         $this->assertSame('survives-reconnect', DB::selectOne("select rls.context('tenant_id') as v")->v);
 
         // A fresh backend would have no session GUC; re-establishment restores it.
@@ -68,7 +68,7 @@ class SessionStrategyTest extends TestCase
     {
         // Regression: (string) false is '', which rls.context() reads as NULL —
         // collapsing a `false` scope into "no context" and silently mis-scoping.
-        Rls::actingAs(['active' => false]);
+        Rls::isolateTo(['active' => false]);
 
         $this->assertSame(
             'false',
@@ -87,7 +87,7 @@ class SessionStrategyTest extends TestCase
     {
         // A prior request sets context: the session GUC is set and its keys are
         // tracked on the (persistent) connection.
-        Rls::actingAs(['tenant_id' => 'req-a-tenant']);
+        Rls::isolateTo(['tenant_id' => 'req-a-tenant']);
         $this->assertSame('req-a-tenant', DB::selectOne("select rls.context('tenant_id') as v")->v);
 
         // Simulate an Octane/worker scope reset: the scoped context stack is

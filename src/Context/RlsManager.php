@@ -284,7 +284,7 @@ class RlsManager
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
-    public function actingAs(array $context, ?Closure $callback = null): mixed
+    public function isolateTo(array $context, ?Closure $callback = null): mixed
     {
         return $this->enter(RlsContext::make($context), $callback);
     }

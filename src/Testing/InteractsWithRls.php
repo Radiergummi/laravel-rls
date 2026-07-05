@@ -23,7 +23,7 @@ trait InteractsWithRls
      */
     protected function withRlsContext(array $context, ?Closure $callback = null): mixed
     {
-        return Rls::actingAs($context, $callback);
+        return Rls::isolateTo($context, $callback);
     }
 
     /**
@@ -35,7 +35,7 @@ trait InteractsWithRls
      */
     protected function actingAsTenant(string|int $id, ?Closure $callback = null): mixed
     {
-        return Rls::actingAs(['tenant_id' => $id], $callback);
+        return Rls::isolateTo(['tenant_id' => $id], $callback);
     }
 
     /**
@@ -101,7 +101,7 @@ trait InteractsWithRls
         $fromId = $this->tenantKey($from);
         $otherId = $this->tenantKey($cannotSee);
 
-        Rls::actingAs([$dimension => $fromId], function () use ($modelClass, $otherId, $dimension) {
+        Rls::isolateTo([$dimension => $fromId], function () use ($modelClass, $otherId, $dimension) {
             $leaked = $modelClass::query()->where($dimension, $otherId)->count();
             $this->assertSame(
                 0,
@@ -135,7 +135,7 @@ trait InteractsWithRls
         $actingId = $this->tenantKey($actingAs);
         $foreignId = $this->tenantKey($tenant);
 
-        Rls::actingAs([$dimension => $actingId], function () use ($modelClass, $foreignId, $dimension) {
+        Rls::isolateTo([$dimension => $actingId], function () use ($modelClass, $foreignId, $dimension) {
             try {
                 // Run in a savepoint so the expected policy violation rolls back cleanly without
                 // aborting any surrounding transaction.

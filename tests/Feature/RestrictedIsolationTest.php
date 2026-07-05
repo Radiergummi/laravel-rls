@@ -30,11 +30,11 @@ class RestrictedIsolationTest extends TestCase
             ->selectOne("select relforcerowsecurity as f from pg_class where relname = 'things'")->f;
         $this->assertFalse((bool) $forced, 'sanity: FORCE is off');
 
-        Rls::actingAs(['tenant_id' => $this->a], function () {
+        Rls::isolateTo(['tenant_id' => $this->a], function () {
             $this->assertSame(2, DB::table('demo.things')->count());
         });
 
-        Rls::actingAs(['tenant_id' => $this->b], function () {
+        Rls::isolateTo(['tenant_id' => $this->b], function () {
             $this->assertSame(1, DB::table('demo.things')->count());
         });
     }

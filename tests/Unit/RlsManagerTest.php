@@ -39,7 +39,7 @@ class RlsManagerTest extends TestCase
     {
         $manager = $this->manager();
         $seen = null;
-        $result = $manager->actingAs(['tenant_id' => '9'], function () use ($manager, &$seen) {
+        $result = $manager->isolateTo(['tenant_id' => '9'], function () use ($manager, &$seen) {
             $seen = $manager->get('tenant_id');
 
             return 'ok';
@@ -58,7 +58,7 @@ class RlsManagerTest extends TestCase
         $manager = $this->manager();
 
         try {
-            $manager->actingAs(
+            $manager->isolateTo(
                 ['tenant_id' => '9'],
                 fn() => throw new RuntimeException('boom'),
             );
@@ -75,7 +75,7 @@ class RlsManagerTest extends TestCase
     public function acting_as_imperative_persists(): void
     {
         $manager = $this->manager();
-        $manager->actingAs(['tenant_id' => '9']);
+        $manager->isolateTo(['tenant_id' => '9']);
         $this->assertTrue($manager->hasContext());
         $this->assertSame('9', $manager->get('tenant_id'));
     }
@@ -88,8 +88,8 @@ class RlsManagerTest extends TestCase
     public function nested_contexts_stack(): void
     {
         $manager = $this->manager();
-        $manager->actingAs(['tenant_id' => 'outer']);
-        $manager->actingAs(['tenant_id' => 'inner'], function () use ($manager) {
+        $manager->isolateTo(['tenant_id' => 'outer']);
+        $manager->isolateTo(['tenant_id' => 'inner'], function () use ($manager) {
             $this->assertSame('inner', $manager->get('tenant_id'));
         });
         $this->assertSame('outer', $manager->get('tenant_id'));
@@ -118,7 +118,7 @@ class RlsManagerTest extends TestCase
     public function set_merges_into_current(): void
     {
         $manager = $this->manager();
-        $manager->actingAs(['tenant_id' => '9']);
+        $manager->isolateTo(['tenant_id' => '9']);
         $manager->set('user_id', 5);
         $this->assertSame('9', $manager->get('tenant_id'));
         $this->assertSame(5, $manager->get('user_id'));
@@ -135,7 +135,7 @@ class RlsManagerTest extends TestCase
 
         $this->expectException(InvalidContextValue::class);
 
-        $manager->actingAs(['tenant_id' => 'not-a-uuid']);
+        $manager->isolateTo(['tenant_id' => 'not-a-uuid']);
     }
 
     /**
@@ -148,7 +148,7 @@ class RlsManagerTest extends TestCase
         $manager = $this->manager();
         $manager->defineContext(fn($c) => $c->uuid('tenant_id'));
 
-        $manager->actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111']);
+        $manager->isolateTo(['tenant_id' => '11111111-1111-1111-1111-111111111111']);
 
         $this->assertTrue($manager->hasContext());
     }
@@ -163,7 +163,7 @@ class RlsManagerTest extends TestCase
         $manager = $this->manager();
         $manager->defineContext(fn($c) => $c->uuid('tenant_id'));
 
-        $manager->actingAs([
+        $manager->isolateTo([
             'tenant_id' => '11111111-1111-1111-1111-111111111111',
             'user_id' => 'anything',
         ]);
@@ -182,7 +182,7 @@ class RlsManagerTest extends TestCase
 
         $this->expectException(InvalidContextValue::class);
 
-        $manager->actingAs(['org_id' => 'abc']);
+        $manager->isolateTo(['org_id' => 'abc']);
     }
 
     /**
@@ -208,7 +208,7 @@ class RlsManagerTest extends TestCase
     {
         $manager = $this->manager();
 
-        $manager->actingAs(['tenant_id' => 'anything-goes']);
+        $manager->isolateTo(['tenant_id' => 'anything-goes']);
 
         $this->assertSame('anything-goes', $manager->get('tenant_id'));
     }

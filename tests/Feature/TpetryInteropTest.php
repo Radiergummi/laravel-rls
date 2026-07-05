@@ -29,7 +29,7 @@ class TpetryInteropTest extends TestCase
     #[Test]
     public function rls_context_injection_still_works_under_tpetry(): void
     {
-        Rls::actingAs(['tenant_id' => 'tpetry-tenant']);
+        Rls::isolateTo(['tenant_id' => 'tpetry-tenant']);
 
         $this->assertSame('tpetry-tenant', DB::selectOne("select rls.context('tenant_id') as v")->v);
     }

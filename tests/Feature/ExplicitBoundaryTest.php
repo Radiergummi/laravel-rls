@@ -21,7 +21,7 @@ class ExplicitBoundaryTest extends TestCase
     #[Test]
     public function bare_context_query_outside_a_transaction_throws(): void
     {
-        Rls::actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111']);
+        Rls::isolateTo(['tenant_id' => '11111111-1111-1111-1111-111111111111']);
 
         $this->expectException(MissingContextBoundary::class);
 
@@ -31,7 +31,7 @@ class ExplicitBoundaryTest extends TestCase
     #[Test]
     public function query_inside_a_transaction_is_allowed(): void
     {
-        Rls::actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111'], function () {
+        Rls::isolateTo(['tenant_id' => '11111111-1111-1111-1111-111111111111'], function () {
             DB::transaction(function () {
                 $this->assertSame(0, DB::table('boundary_things')->count());
             });

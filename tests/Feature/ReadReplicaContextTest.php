@@ -32,7 +32,7 @@ class ReadReplicaContextTest extends TestCase
     #[Test]
     public function read_replica_pdo_sees_session_context(): void
     {
-        Rls::actingAs(['tenant_id' => 'replica-tenant']);
+        Rls::isolateTo(['tenant_id' => 'replica-tenant']);
 
         // A plain select routes to the read PDO (a separate backend session).
         $value = DB::selectOne("select rls.context('tenant_id') as v")->v;

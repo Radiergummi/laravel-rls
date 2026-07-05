@@ -23,7 +23,7 @@ class FailLoudGuardTest extends TestCase
     #[Test]
     public function query_with_context_does_not_throw(): void
     {
-        Rls::actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111'], function () {
+        Rls::isolateTo(['tenant_id' => '11111111-1111-1111-1111-111111111111'], function () {
             $this->assertSame(0, Document::count());
         });
     }

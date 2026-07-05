@@ -16,7 +16,7 @@ class ContextBackingTest extends TestCase
     {
         // This is the exact path a queued job uses: dehydrate at dispatch,
         // hydrate in the worker.
-        Rls::actingAs(['tenant_id' => 'ctx-a', 'user_id' => 7]);
+        Rls::isolateTo(['tenant_id' => 'ctx-a', 'user_id' => 7]);
 
         $payload = Context::dehydrate();
 
@@ -48,7 +48,7 @@ class ContextBackingTest extends TestCase
     #[Test]
     public function tenant_below_a_bypass_scope_still_propagates(): void
     {
-        Rls::actingAs(['tenant_id' => 'ctx-a']);
+        Rls::isolateTo(['tenant_id' => 'ctx-a']);
 
         Rls::withoutRls('export', function () use (&$payload) {
             $payload = Context::dehydrate();

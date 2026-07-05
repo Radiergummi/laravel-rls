@@ -22,7 +22,7 @@ class LeakCanaryTest extends TestCase
     public function logs_and_clears_a_leaked_context(): void
     {
         $log = Log::spy();
-        Rls::actingAs(['tenant_id' => 'leaked-from-previous-job']);
+        Rls::isolateTo(['tenant_id' => 'leaked-from-previous-job']);
 
         app(RlsManager::class)->checkForLeak('job');
 
@@ -48,7 +48,7 @@ class LeakCanaryTest extends TestCase
     public function throw_mode_raises_and_still_clears(): void
     {
         config(['rls.leak_canary' => 'throw']);
-        Rls::actingAs(['tenant_id' => 'leaked']);
+        Rls::isolateTo(['tenant_id' => 'leaked']);
 
         try {
             app(RlsManager::class)->checkForLeak('request');
@@ -66,7 +66,7 @@ class LeakCanaryTest extends TestCase
     {
         config(['rls.leak_canary' => 'off']);
         $log = Log::spy();
-        Rls::actingAs(['tenant_id' => 'leaked']);
+        Rls::isolateTo(['tenant_id' => 'leaked']);
 
         app(RlsManager::class)->checkForLeak('job');
 

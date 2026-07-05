@@ -29,7 +29,7 @@ class WithDefaultTest extends TestCase
     {
         $tenant = '33333333-3333-3333-3333-333333333333';
 
-        Rls::actingAs(['tenant_id' => $tenant], function () use ($tenant) {
+        Rls::isolateTo(['tenant_id' => $tenant], function () use ($tenant) {
             $id = '44444444-4444-4444-4444-444444444444';
             DB::table('gadgets')->insert([
                 'id' => $id,

@@ -16,7 +16,7 @@ class QueuedJobContextTest extends TestCase
     #[Test]
     public function tenant_context_propagates_to_a_queued_job(): void
     {
-        Rls::actingAs(['tenant_id' => 'job-tenant']);
+        Rls::isolateTo(['tenant_id' => 'job-tenant']);
         RecordTenantJob::dispatch();
 
         // Clear the dispatcher's context so a pass can only come from the
