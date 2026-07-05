@@ -6,6 +6,7 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Exceptions\MissingContextBoundary;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
@@ -17,6 +18,26 @@ use Radiergummi\LaravelRls\RlsServiceProvider;
  */
 class ExplicitBoundaryTest extends TestCase
 {
+    #[Test]
+    public function bare_context_query_outside_a_transaction_throws(): void
+    {
+        Rls::actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111']);
+
+        $this->expectException(MissingContextBoundary::class);
+
+        DB::table('boundary_things')->count();
+    }
+
+    #[Test]
+    public function query_inside_a_transaction_is_allowed(): void
+    {
+        Rls::actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111'], function () {
+            DB::transaction(function () {
+                $this->assertSame(0, DB::table('boundary_things')->count());
+            });
+        });
+    }
+
     protected function getPackageProviders($app): array
     {
         return [RlsServiceProvider::class];
@@ -53,23 +74,5 @@ class ExplicitBoundaryTest extends TestCase
         DB::statement('drop table if exists boundary_things');
         Rls::forget();
         parent::tearDown();
-    }
-
-    public function test_bare_context_query_outside_a_transaction_throws(): void
-    {
-        Rls::actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111']);
-
-        $this->expectException(MissingContextBoundary::class);
-
-        DB::table('boundary_things')->count();
-    }
-
-    public function test_query_inside_a_transaction_is_allowed(): void
-    {
-        Rls::actingAs(['tenant_id' => '11111111-1111-1111-1111-111111111111'], function () {
-            DB::transaction(function () {
-                $this->assertSame(0, DB::table('boundary_things')->count());
-            });
-        });
     }
 }

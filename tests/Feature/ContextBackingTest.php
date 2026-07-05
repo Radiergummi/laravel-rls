@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\Context;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
 class ContextBackingTest extends TestCase
 {
-    public function test_context_survives_dehydrate_hydrate_roundtrip(): void
+    #[Test]
+    public function context_survives_dehydrate_hydrate_roundtrip(): void
     {
         // This is the exact path a queued job uses: dehydrate at dispatch,
         // hydrate in the worker.
@@ -28,7 +30,8 @@ class ContextBackingTest extends TestCase
         $this->assertSame(7, Rls::get('user_id'));
     }
 
-    public function test_bypass_is_stripped_from_the_dehydrated_payload(): void
+    #[Test]
+    public function bypass_is_stripped_from_the_dehydrated_payload(): void
     {
         // A job dispatched inside a bypass scope must NOT inherit bypass.
         Rls::withoutRls('export', function () use (&$payload) {
@@ -42,7 +45,8 @@ class ContextBackingTest extends TestCase
         $this->assertFalse(Rls::hasContext(), 'bypass context did not propagate');
     }
 
-    public function test_tenant_below_a_bypass_scope_still_propagates(): void
+    #[Test]
+    public function tenant_below_a_bypass_scope_still_propagates(): void
     {
         Rls::actingAs(['tenant_id' => 'ctx-a']);
 

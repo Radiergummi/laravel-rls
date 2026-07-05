@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Testing\InteractsWithRls;
 use Radiergummi\LaravelRls\Tests\Models\Document;
@@ -17,6 +18,68 @@ class TenantIsolationTest extends TestCase
 
     private Tenant $a;
     private Tenant $b;
+
+    #[Test]
+    public function table_is_protected(): void
+    {
+        $this->assertTableProtected('documents');
+    }
+
+    #[Test]
+    public function reads_are_scoped_to_the_acting_tenant(): void
+    {
+        $this->withRlsContext(['tenant_id' => $this->a->id], function () {
+            $this->assertSame(2, Document::count());
+        });
+
+        $this->withRlsContext(['tenant_id' => $this->b->id], function () {
+            $this->assertSame(3, Document::count());
+        });
+    }
+
+    #[Test]
+    public function isolation_helper_confirms_no_leak(): void
+    {
+        $this->assertRlsIsolates(Document::class, from: $this->a, cannotSee: $this->b);
+    }
+
+    #[Test]
+    public function cross_tenant_writes_are_rejected(): void
+    {
+        $this->assertCannotWriteAcrossTenants(Document::class, actingAs: $this->a, tenant: $this->b->id);
+    }
+
+    #[Test]
+    public function missing_context_is_fail_closed(): void
+    {
+        // No context set: DB returns zero rows rather than leaking.
+        $this->assertSame(0, Document::count());
+    }
+
+    #[Test]
+    public function bypass_sees_all_tenants(): void
+    {
+        Rls::withoutRls('audit', function () {
+            $this->assertSame(5, Document::count());
+        });
+    }
+
+    #[Test]
+    public function restrictive_policy_prevents_permissive_feature_leak(): void
+    {
+        // Add a permissive feature policy that would, under a permissive-only
+        // design, OR-in other tenants' rows. The RESTRICTIVE isolation policy
+        // must still AND-confine reads to the acting tenant.
+        DB::statement('create policy documents_public on documents as permissive for select using (true)');
+
+        try {
+            $this->withRlsContext(['tenant_id' => $this->a->id], function () {
+                $this->assertSame(2, Document::count(), 'Restrictive policy failed to confine reads');
+            });
+        } finally {
+            DB::statement('drop policy documents_public on documents');
+        }
+    }
 
     protected function setUp(): void
     {
@@ -32,60 +95,5 @@ class TenantIsolationTest extends TestCase
             Document::factory()->count(2)->create(['tenant_id' => $this->a->id]);
             Document::factory()->count(3)->create(['tenant_id' => $this->b->id]);
         });
-    }
-
-    public function test_table_is_protected(): void
-    {
-        $this->assertTableProtected('documents');
-    }
-
-    public function test_reads_are_scoped_to_the_acting_tenant(): void
-    {
-        $this->withRlsContext(['tenant_id' => $this->a->id], function () {
-            $this->assertSame(2, Document::count());
-        });
-
-        $this->withRlsContext(['tenant_id' => $this->b->id], function () {
-            $this->assertSame(3, Document::count());
-        });
-    }
-
-    public function test_isolation_helper_confirms_no_leak(): void
-    {
-        $this->assertRlsIsolates(Document::class, from: $this->a, cannotSee: $this->b);
-    }
-
-    public function test_cross_tenant_writes_are_rejected(): void
-    {
-        $this->assertCannotWriteAcrossTenants(Document::class, actingAs: $this->a, tenant: $this->b->id);
-    }
-
-    public function test_missing_context_is_fail_closed(): void
-    {
-        // No context set: DB returns zero rows rather than leaking.
-        $this->assertSame(0, Document::count());
-    }
-
-    public function test_bypass_sees_all_tenants(): void
-    {
-        Rls::withoutRls('audit', function () {
-            $this->assertSame(5, Document::count());
-        });
-    }
-
-    public function test_restrictive_policy_prevents_permissive_feature_leak(): void
-    {
-        // Add a permissive feature policy that would, under a permissive-only
-        // design, OR-in other tenants' rows. The RESTRICTIVE isolation policy
-        // must still AND-confine reads to the acting tenant.
-        DB::statement('create policy documents_public on documents as permissive for select using (true)');
-
-        try {
-            $this->withRlsContext(['tenant_id' => $this->a->id], function () {
-                $this->assertSame(2, Document::count(), 'Restrictive policy failed to confine reads');
-            });
-        } finally {
-            DB::statement('drop policy documents_public on documents');
-        }
     }
 }

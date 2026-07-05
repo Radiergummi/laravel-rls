@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Database\Connection;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
 use Radiergummi\LaravelRls\Exceptions\ResolverCollision;
 use Radiergummi\LaravelRls\RlsServiceProvider;
@@ -13,7 +14,8 @@ use ReflectionProperty;
 
 class ResolverCollisionTest extends TestCase
 {
-    public function test_detects_foreign_resolver_with_default_connection_class(): void
+    #[Test]
+    public function detects_foreign_resolver_with_default_connection_class(): void
     {
         $foreign = fn() => 'foreign';
 
@@ -22,14 +24,16 @@ class ResolverCollisionTest extends TestCase
         );
     }
 
-    public function test_no_collision_when_no_existing_resolver(): void
+    #[Test]
+    public function no_collision_when_no_existing_resolver(): void
     {
         $this->assertFalse(
             RlsServiceProvider::detectResolverCollision(null, null, RlsPostgresConnection::class),
         );
     }
 
-    public function test_no_collision_with_our_own_lingering_resolver(): void
+    #[Test]
+    public function no_collision_with_our_own_lingering_resolver(): void
     {
         $own = fn() => 'ours';
 
@@ -38,7 +42,8 @@ class ResolverCollisionTest extends TestCase
         );
     }
 
-    public function test_no_collision_when_connection_class_is_composed(): void
+    #[Test]
+    public function no_collision_when_connection_class_is_composed(): void
     {
         $foreign = fn() => 'foreign';
 
@@ -47,7 +52,8 @@ class ResolverCollisionTest extends TestCase
         );
     }
 
-    public function test_boot_registration_throws_on_a_real_foreign_resolver(): void
+    #[Test]
+    public function boot_registration_throws_on_a_real_foreign_resolver(): void
     {
         $ref = new ReflectionProperty(RlsServiceProvider::class, 'ownResolver');
         $prevOwn = $ref->getValue();

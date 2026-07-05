@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Radiergummi\LaravelRls\Context\RlsContext;
 
 class RlsContextTest extends TestCase
 {
-    public function test_holds_and_reads_values(): void
+    #[Test]
+    public function holds_and_reads_values(): void
     {
         $c = RlsContext::make(['tenant_id' => 'abc', 'user_id' => 7]);
         $this->assertSame('abc', $c->get('tenant_id'));
@@ -20,7 +22,8 @@ class RlsContextTest extends TestCase
         $this->assertFalse($c->isBypass());
     }
 
-    public function test_with_returns_new_instance_without_mutating(): void
+    #[Test]
+    public function with_returns_new_instance_without_mutating(): void
     {
         $a = RlsContext::make(['tenant_id' => '1']);
         $b = $a->with(['tenant_id' => '2', 'x' => 'y']);
@@ -30,7 +33,8 @@ class RlsContextTest extends TestCase
         $this->assertNotSame($a, $b);
     }
 
-    public function test_bypass_context(): void
+    #[Test]
+    public function bypass_context(): void
     {
         $c = RlsContext::bypass('nightly-export');
         $this->assertTrue($c->isBypass());

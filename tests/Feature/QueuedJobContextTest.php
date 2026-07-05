@@ -6,12 +6,29 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Tests\Jobs\RecordTenantJob;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
 class QueuedJobContextTest extends TestCase
 {
+    #[Test]
+    public function tenant_context_propagates_to_a_queued_job(): void
+    {
+        Rls::actingAs(['tenant_id' => 'job-tenant']);
+        RecordTenantJob::dispatch();
+
+        // Clear the dispatcher's context so a pass can only come from the
+        // context that rode the job payload, not shared in-process state.
+        Rls::forget();
+        $this->assertFalse(Rls::hasContext());
+
+        $this->artisan('queue:work', ['--once' => true]);
+
+        $this->assertSame('job-tenant', Cache::get('rls_job_tenant'));
+    }
+
     protected function defineEnvironment($app): void
     {
         parent::defineEnvironment($app);
@@ -45,20 +62,5 @@ class QueuedJobContextTest extends TestCase
     {
         Schema::dropIfExists('jobs');
         parent::tearDown();
-    }
-
-    public function test_tenant_context_propagates_to_a_queued_job(): void
-    {
-        Rls::actingAs(['tenant_id' => 'job-tenant']);
-        RecordTenantJob::dispatch();
-
-        // Clear the dispatcher's context so a pass can only come from the
-        // context that rode the job payload, not shared in-process state.
-        Rls::forget();
-        $this->assertFalse(Rls::hasContext());
-
-        $this->artisan('queue:work', ['--once' => true]);
-
-        $this->assertSame('job-tenant', Cache::get('rls_job_tenant'));
     }
 }

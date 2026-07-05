@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
 class RlsFunctionsTest extends TestCase
 {
-    public function test_context_returns_null_when_unset(): void
+    #[Test]
+    public function context_returns_null_when_unset(): void
     {
         $this->assertNull(DB::selectOne("select rls.context('tenant_id') as v")->v);
     }
 
-    public function test_context_reads_transaction_local_guc(): void
+    #[Test]
+    public function context_reads_transaction_local_guc(): void
     {
         DB::transaction(function () {
             DB::statement("select set_config('app.tenant_id', 'abc', true)");
@@ -22,7 +25,8 @@ class RlsFunctionsTest extends TestCase
         });
     }
 
-    public function test_context_treats_empty_string_as_null(): void
+    #[Test]
+    public function context_treats_empty_string_as_null(): void
     {
         DB::transaction(function () {
             DB::statement("select set_config('app.tenant_id', '', true)");
@@ -30,12 +34,14 @@ class RlsFunctionsTest extends TestCase
         });
     }
 
-    public function test_bypass_defaults_to_false(): void
+    #[Test]
+    public function bypass_defaults_to_false(): void
     {
         $this->assertFalse(DB::selectOne('select rls.bypass() as v')->v);
     }
 
-    public function test_bypass_reads_guc(): void
+    #[Test]
+    public function bypass_reads_guc(): void
     {
         DB::transaction(function () {
             DB::statement("select set_config('app.bypass', 'on', true)");

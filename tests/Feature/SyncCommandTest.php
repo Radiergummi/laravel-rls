@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
 class SyncCommandTest extends TestCase
 {
-    public function test_generates_typed_helper_from_the_declared_schema(): void
+    #[Test]
+    public function generates_typed_helper_from_the_declared_schema(): void
     {
         Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
 
@@ -23,9 +25,11 @@ class SyncCommandTest extends TestCase
         $this->assertNotNull($exists, 'expected rls.tenant_id() to be created');
     }
 
-    public function test_is_a_noop_without_a_declared_schema(): void
+    #[Test]
+    public function is_a_noop_without_a_declared_schema(): void
     {
-        $this->artisan('rls:sync')
+        $this
+            ->artisan('rls:sync')
             ->expectsOutputToContain('No context schema')
             ->assertExitCode(0);
     }

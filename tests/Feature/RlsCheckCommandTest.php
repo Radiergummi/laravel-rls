@@ -6,11 +6,13 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
 class RlsCheckCommandTest extends TestCase
 {
-    public function test_passes_for_a_table_scoped_by_a_non_tenant_dimension(): void
+    #[Test]
+    public function passes_for_a_table_scoped_by_a_non_tenant_dimension(): void
     {
         // An org_id-scoped table is invisible to a tenant_id-only audit; the
         // agnostic detection must consider it and pass.
@@ -27,7 +29,8 @@ class RlsCheckCommandTest extends TestCase
         }
     }
 
-    public function test_flags_a_table_with_rls_enabled_but_no_policy(): void
+    #[Test]
+    public function flags_a_table_with_rls_enabled_but_no_policy(): void
     {
         // No tenant_id column anywhere: the old column-name detection would miss
         // this entirely. RLS is on but there is no policy, so it is half-
@@ -38,7 +41,8 @@ class RlsCheckCommandTest extends TestCase
         DB::statement('alter table "orphan_rls" enable row level security');
 
         try {
-            $this->artisan('rls:check')
+            $this
+                ->artisan('rls:check')
                 ->expectsOutputToContain('orphan_rls')
                 ->assertExitCode(1);
         } finally {

@@ -6,12 +6,14 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use BadMethodCallException;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
 class TypedHelpersTest extends TestCase
 {
-    public function test_generated_sql_helper_casts_context_to_the_declared_type(): void
+    #[Test]
+    public function generated_sql_helper_casts_context_to_the_declared_type(): void
     {
         Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
 
@@ -30,7 +32,8 @@ class TypedHelpersTest extends TestCase
         });
     }
 
-    public function test_typed_php_accessor_reads_the_dimension(): void
+    #[Test]
+    public function typed_php_accessor_reads_the_dimension(): void
     {
         Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
 
@@ -44,7 +47,8 @@ class TypedHelpersTest extends TestCase
         });
     }
 
-    public function test_unknown_accessor_throws(): void
+    #[Test]
+    public function unknown_accessor_throws(): void
     {
         Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
 

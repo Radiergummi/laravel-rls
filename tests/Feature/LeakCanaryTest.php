@@ -7,6 +7,7 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Context\RlsManager;
 use Radiergummi\LaravelRls\Exceptions\RlsContextLeaked;
 use Radiergummi\LaravelRls\Facades\Rls;
@@ -14,18 +15,27 @@ use Radiergummi\LaravelRls\Tests\TestCase;
 
 class LeakCanaryTest extends TestCase
 {
-    public function test_logs_and_clears_a_leaked_context(): void
+    /**
+     * @throws RlsContextLeaked
+     */
+    #[Test]
+    public function logs_and_clears_a_leaked_context(): void
     {
         $log = Log::spy();
         Rls::actingAs(['tenant_id' => 'leaked-from-previous-job']);
 
         app(RlsManager::class)->checkForLeak('job');
 
+        /** @noinspection PhpUndefinedMethodInspection */
         $log->shouldHaveReceived('critical')->once();
         $this->assertFalse(Rls::hasContext(), 'leaked context must be cleared before the new unit of work runs');
     }
 
-    public function test_clean_stack_is_silent(): void
+    /**
+     * @throws RlsContextLeaked
+     */
+    #[Test]
+    public function clean_stack_is_silent(): void
     {
         $log = Log::spy();
 
@@ -34,7 +44,8 @@ class LeakCanaryTest extends TestCase
         $log->shouldNotHaveReceived('critical');
     }
 
-    public function test_throw_mode_raises_and_still_clears(): void
+    #[Test]
+    public function throw_mode_raises_and_still_clears(): void
     {
         config(['rls.leak_canary' => 'throw']);
         Rls::actingAs(['tenant_id' => 'leaked']);
@@ -47,7 +58,11 @@ class LeakCanaryTest extends TestCase
         }
     }
 
-    public function test_off_mode_does_nothing(): void
+    /**
+     * @throws RlsContextLeaked
+     */
+    #[Test]
+    public function off_mode_does_nothing(): void
     {
         config(['rls.leak_canary' => 'off']);
         $log = Log::spy();
@@ -59,7 +74,8 @@ class LeakCanaryTest extends TestCase
         Rls::forget();
     }
 
-    public function test_registers_queue_looping_listener(): void
+    #[Test]
+    public function registers_queue_looping_listener(): void
     {
         $this->assertTrue(Event::hasListeners(Looping::class));
     }

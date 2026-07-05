@@ -6,6 +6,7 @@ namespace Radiergummi\LaravelRls\Tests\Unit;
 
 use Illuminate\Events\Dispatcher;
 use Illuminate\Log\Context\Repository;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Radiergummi\LaravelRls\Context\RlsManager;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
@@ -14,12 +15,8 @@ use RuntimeException;
 
 class RlsManagerTest extends TestCase
 {
-    private function manager(): RlsManager
-    {
-        return new RlsManager(new Repository(new Dispatcher()));
-    }
-
-    public function test_starts_empty(): void
+    #[Test]
+    public function starts_empty(): void
     {
         $m = $this->manager();
         $this->assertFalse($m->hasContext());
@@ -27,7 +24,17 @@ class RlsManagerTest extends TestCase
         $this->assertSame([], $m->context());
     }
 
-    public function test_acting_as_scoped_pushes_and_pops(): void
+    private function manager(): RlsManager
+    {
+        return new RlsManager(new Repository(new Dispatcher()));
+    }
+
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function acting_as_scoped_pushes_and_pops(): void
     {
         $m = $this->manager();
         $seen = null;
@@ -41,7 +48,11 @@ class RlsManagerTest extends TestCase
         $this->assertFalse($m->hasContext(), 'context popped after callback');
     }
 
-    public function test_acting_as_pops_even_on_exception(): void
+    /**
+     * @throws InvalidContextValue
+     */
+    #[Test]
+    public function acting_as_pops_even_on_exception(): void
     {
         $m = $this->manager();
 
@@ -52,7 +63,12 @@ class RlsManagerTest extends TestCase
         $this->assertFalse($m->hasContext());
     }
 
-    public function test_acting_as_imperative_persists(): void
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function acting_as_imperative_persists(): void
     {
         $m = $this->manager();
         $m->actingAs(['tenant_id' => '9']);
@@ -60,7 +76,12 @@ class RlsManagerTest extends TestCase
         $this->assertSame('9', $m->get('tenant_id'));
     }
 
-    public function test_nested_contexts_stack(): void
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function nested_contexts_stack(): void
     {
         $m = $this->manager();
         $m->actingAs(['tenant_id' => 'outer']);
@@ -70,7 +91,12 @@ class RlsManagerTest extends TestCase
         $this->assertSame('outer', $m->get('tenant_id'));
     }
 
-    public function test_without_rls_is_a_bypass_scope(): void
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function without_rls_is_a_bypass_scope(): void
     {
         $m = $this->manager();
         $m->withoutRls('seeding', function () use ($m) {
@@ -80,7 +106,12 @@ class RlsManagerTest extends TestCase
         $this->assertFalse($m->hasContext());
     }
 
-    public function test_set_merges_into_current(): void
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function set_merges_into_current(): void
     {
         $m = $this->manager();
         $m->actingAs(['tenant_id' => '9']);
@@ -89,7 +120,11 @@ class RlsManagerTest extends TestCase
         $this->assertSame(5, $m->get('user_id'));
     }
 
-    public function test_rejects_value_violating_declared_type(): void
+    /**
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function rejects_value_violating_declared_type(): void
     {
         $m = $this->manager();
         $m->defineContext(fn($c) => $c->uuid('tenant_id'));
@@ -99,7 +134,12 @@ class RlsManagerTest extends TestCase
         $m->actingAs(['tenant_id' => 'not-a-uuid']);
     }
 
-    public function test_accepts_value_matching_declared_type(): void
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function accepts_value_matching_declared_type(): void
     {
         $m = $this->manager();
         $m->defineContext(fn($c) => $c->uuid('tenant_id'));
@@ -109,7 +149,12 @@ class RlsManagerTest extends TestCase
         $this->assertTrue($m->hasContext());
     }
 
-    public function test_undeclared_dimension_is_not_validated(): void
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function undeclared_dimension_is_not_validated(): void
     {
         $m = $this->manager();
         $m->defineContext(fn($c) => $c->uuid('tenant_id'));
@@ -122,7 +167,11 @@ class RlsManagerTest extends TestCase
         $this->assertSame('anything', $m->get('user_id'));
     }
 
-    public function test_rejects_non_integer_for_integer_dimension(): void
+    /**
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function rejects_non_integer_for_integer_dimension(): void
     {
         $m = $this->manager();
         $m->defineContext(fn($c) => $c->integer('org_id'));
@@ -132,7 +181,11 @@ class RlsManagerTest extends TestCase
         $m->actingAs(['org_id' => 'abc']);
     }
 
-    public function test_set_also_validates(): void
+    /**
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function set_also_validates(): void
     {
         $m = $this->manager();
         $m->defineContext(fn($c) => $c->uuid('tenant_id'));
@@ -142,7 +195,12 @@ class RlsManagerTest extends TestCase
         $m->set('tenant_id', 'nope');
     }
 
-    public function test_no_schema_means_no_validation(): void
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function no_schema_means_no_validation(): void
     {
         $m = $this->manager();
 
@@ -151,7 +209,12 @@ class RlsManagerTest extends TestCase
         $this->assertSame('anything-goes', $m->get('tenant_id'));
     }
 
-    public function test_without_rls_dispatches_a_bypass_event_with_the_reason(): void
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    #[Test]
+    public function without_rls_dispatches_a_bypass_event_with_the_reason(): void
     {
         $events = new Dispatcher();
         $captured = null;

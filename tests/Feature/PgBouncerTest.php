@@ -7,6 +7,7 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase;
 use PDO;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Support\RlsFunctions;
@@ -24,6 +25,56 @@ use Throwable;
  */
 class PgBouncerTest extends TestCase
 {
+    #[Test]
+    public function transaction_local_context_reaches_queries_through_pgbouncer(): void
+    {
+        Rls::actingAs(['tenant_id' => 'bouncer-tenant']);
+
+        DB::transaction(function () {
+            $this->assertSame(
+                'bouncer-tenant',
+                DB::selectOne("select rls.context('tenant_id') as v")->v,
+            );
+        });
+    }
+
+    #[Test]
+    public function each_transaction_gets_its_own_context_under_pooling(): void
+    {
+        Rls::actingAs(['tenant_id' => 'first']);
+        DB::transaction(fn()
+            => $this->assertSame(
+            'first',
+            DB::selectOne("select rls.context('tenant_id') as v")->v,
+        ));
+        Rls::forget();
+
+        Rls::actingAs(['tenant_id' => 'second']);
+        DB::transaction(fn()
+            => $this->assertSame(
+            'second',
+            DB::selectOne("select rls.context('tenant_id') as v")->v,
+        ));
+    }
+
+    #[Test]
+    public function committed_transaction_context_does_not_leak_on_the_pool(): void
+    {
+        Rls::actingAs(['tenant_id' => 'ephemeral']);
+
+        DB::transaction(fn()
+            => $this->assertSame(
+            'ephemeral',
+            DB::selectOne("select rls.context('tenant_id') as v")->v,
+        ));
+
+        // With context no longer active, a bare query must not observe the
+        // prior transaction's local GUC on whatever pooled connection it lands
+        // on — transaction-local settings reset at COMMIT.
+        Rls::forget();
+        $this->assertNull(DB::selectOne("select rls.context('tenant_id') as v")->v);
+    }
+
     protected function getPackageProviders($app): array
     {
         return [RlsServiceProvider::class];
@@ -68,49 +119,5 @@ class PgBouncerTest extends TestCase
     {
         Rls::forget();
         parent::tearDown();
-    }
-
-    public function test_transaction_local_context_reaches_queries_through_pgbouncer(): void
-    {
-        Rls::actingAs(['tenant_id' => 'bouncer-tenant']);
-
-        DB::transaction(function () {
-            $this->assertSame(
-                'bouncer-tenant',
-                DB::selectOne("select rls.context('tenant_id') as v")->v,
-            );
-        });
-    }
-
-    public function test_each_transaction_gets_its_own_context_under_pooling(): void
-    {
-        Rls::actingAs(['tenant_id' => 'first']);
-        DB::transaction(fn() => $this->assertSame(
-            'first',
-            DB::selectOne("select rls.context('tenant_id') as v")->v,
-        ));
-        Rls::forget();
-
-        Rls::actingAs(['tenant_id' => 'second']);
-        DB::transaction(fn() => $this->assertSame(
-            'second',
-            DB::selectOne("select rls.context('tenant_id') as v")->v,
-        ));
-    }
-
-    public function test_committed_transaction_context_does_not_leak_on_the_pool(): void
-    {
-        Rls::actingAs(['tenant_id' => 'ephemeral']);
-
-        DB::transaction(fn() => $this->assertSame(
-            'ephemeral',
-            DB::selectOne("select rls.context('tenant_id') as v")->v,
-        ));
-
-        // With context no longer active, a bare query must not observe the
-        // prior transaction's local GUC on whatever pooled connection it lands
-        // on — transaction-local settings reset at COMMIT.
-        Rls::forget();
-        $this->assertNull(DB::selectOne("select rls.context('tenant_id') as v")->v);
     }
 }

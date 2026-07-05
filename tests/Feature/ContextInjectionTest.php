@@ -5,19 +5,22 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
 class ContextInjectionTest extends TestCase
 {
-    public function test_context_reaches_db_within_refresh_database_transaction(): void
+    #[Test]
+    public function context_reaches_db_within_refresh_database_transaction(): void
     {
         // RefreshDatabase already opened a transaction before this body ran.
         Rls::actingAs(['tenant_id' => 'abc']);
         $this->assertSame('abc', DB::selectOne("select rls.context('tenant_id') as v")->v);
     }
 
-    public function test_scoped_context_applies_then_clears(): void
+    #[Test]
+    public function scoped_context_applies_then_clears(): void
     {
         Rls::actingAs(['tenant_id' => 'xyz'], function () {
             $this->assertSame('xyz', DB::selectOne("select rls.context('tenant_id') as v")->v);
@@ -25,7 +28,8 @@ class ContextInjectionTest extends TestCase
         $this->assertNull(DB::selectOne("select rls.context('tenant_id') as v")->v);
     }
 
-    public function test_bypass_scope_sets_bypass_guc(): void
+    #[Test]
+    public function bypass_scope_sets_bypass_guc(): void
     {
         Rls::withoutRls('seeding', function () {
             $this->assertTrue(DB::selectOne('select rls.bypass() as v')->v);
