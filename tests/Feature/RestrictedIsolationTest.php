@@ -86,16 +86,16 @@ class RestrictedIsolationTest extends TestCase
     {
         $conn = fn(string $user)
             => [
-            'driver' => 'pgsql',
-            'host' => '127.0.0.1',
-            'port' => 5432,
-            'database' => 'rls_test',
-            'username' => $user,
-            'password' => 'secret',
-            'charset' => 'utf8',
-            'search_path' => 'public',
-            'sslmode' => 'prefer',
-        ];
+                'driver' => 'pgsql',
+                'host' => '127.0.0.1',
+                'port' => 5432,
+                'database' => 'rls_test',
+                'username' => $user,
+                'password' => 'secret',
+                'charset' => 'utf8',
+                'search_path' => 'public',
+                'sslmode' => 'prefer',
+            ];
 
         $app['config']->set('database.default', 'pgsql');
         $app['config']->set('database.connections.pgsql', $conn('rls_restricted'));

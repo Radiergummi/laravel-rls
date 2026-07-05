@@ -44,17 +44,17 @@ class PgBouncerTest extends TestCase
         Rls::actingAs(['tenant_id' => 'first']);
         DB::transaction(fn()
             => $this->assertSame(
-            'first',
-            DB::selectOne("select rls.context('tenant_id') as v")->v,
-        ));
+                'first',
+                DB::selectOne("select rls.context('tenant_id') as v")->v,
+            ));
         Rls::forget();
 
         Rls::actingAs(['tenant_id' => 'second']);
         DB::transaction(fn()
             => $this->assertSame(
-            'second',
-            DB::selectOne("select rls.context('tenant_id') as v")->v,
-        ));
+                'second',
+                DB::selectOne("select rls.context('tenant_id') as v")->v,
+            ));
     }
 
     #[Test]
@@ -64,9 +64,9 @@ class PgBouncerTest extends TestCase
 
         DB::transaction(fn()
             => $this->assertSame(
-            'ephemeral',
-            DB::selectOne("select rls.context('tenant_id') as v")->v,
-        ));
+                'ephemeral',
+                DB::selectOne("select rls.context('tenant_id') as v")->v,
+            ));
 
         // With context no longer active, a bare query must not observe the
         // prior transaction's local GUC on whatever pooled connection it lands

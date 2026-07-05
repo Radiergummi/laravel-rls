@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Database\Connection;
+use Illuminate\Foundation\Application;
 use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
 use Radiergummi\LaravelRls\Exceptions\ResolverCollision;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Tests\TestCase;
 use ReflectionProperty;
+
+use function assert;
 
 class ResolverCollisionTest extends TestCase
 {
@@ -68,7 +71,10 @@ class ResolverCollisionTest extends TestCase
 
             $this->expectException(ResolverCollision::class);
 
-            (new RlsServiceProvider($this->app))->registerConnectionResolver();
+            $app = $this->app;
+            assert($app instanceof Application);
+
+            (new RlsServiceProvider($app))->registerConnectionResolver();
         } finally {
             if ($prevResolver !== null) {
                 Connection::resolverFor('pgsql', $prevResolver);

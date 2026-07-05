@@ -38,7 +38,7 @@ class WithDefaultTest extends TestCase
 
             $row = DB::table('gadgets')->where('id', $id)->first();
 
-            $this->assertSame($tenant, $row->tenant_id);
+            $this->assertSame($tenant, $row?->tenant_id);
         });
     }
 

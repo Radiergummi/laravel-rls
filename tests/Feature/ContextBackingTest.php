@@ -35,7 +35,7 @@ class ContextBackingTest extends TestCase
     {
         // A job dispatched inside a bypass scope must NOT inherit bypass.
         Rls::withoutRls('export', function () use (&$payload) {
-            $this->assertTrue(Rls::current()->isBypass());
+            $this->assertTrue(Rls::current()?->isBypass());
             $payload = Context::dehydrate();
         });
 

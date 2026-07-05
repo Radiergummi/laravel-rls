@@ -269,10 +269,11 @@ class RlsManager
 
     /**
      * @template T = mixed
-     * @param array<string, mixed> $context
-     * @param null|Closure(): T $callback
      *
-     * @return T
+     * @param array<string, mixed> $context
+     * @param null|Closure(): T    $callback
+     *
+     * @return ($callback is null ? null : T)
      *
      * @throws InvalidContextValue
      * @throws RuntimeException
@@ -284,9 +285,11 @@ class RlsManager
 
     /**
      * @template T
+     *
      * @param null|Closure(): T $callback
      *
-     * @return T|null
+     * @return ($callback is null ? null : T)
+     *
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
@@ -307,9 +310,11 @@ class RlsManager
 
     /**
      * @template T
+     *
      * @param Closure(): T $callback
      *
      * @return T
+     *
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
@@ -320,9 +325,11 @@ class RlsManager
 
     /**
      * @template T
+     *
      * @param Closure(): T $callback
      *
      * @return T
+     *
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
