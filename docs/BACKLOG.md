@@ -11,6 +11,41 @@ and *where* it touches the code.
 
 ## P0 — Correctness & safety hardening (do before any real use)
 
+- [ ] **Owner-mode bypass clause forces a sequential scan.** The owner isolation
+  predicate `rls.bypass() or "<col>" = rls.context('<key>')::<type>` cannot use the
+  scoping-column index: the `OR rls.bypass()` makes the planner fall back to a
+  **Seq Scan** on every scoped read. Measured (methodology spike, PG 18.4, 100k
+  rows, ~1000 rows/query): owner-mode scoped read **~26.6 ms mean / 29.8 ms p99**
+  (Seq Scan, 99 000 rows filtered) vs **~0.8 ms** for the identical query with an
+  index-friendly predicate (Bitmap Index Scan) — **~30× slower**, and because it's
+  a seq scan the penalty grows **linearly with table size** (far worse at 10M rows).
+  `EXPLAIN` confirms the `OR` is the sole cause: dropping just `rls.bypass() OR`
+  restores the index scan. RLS itself is otherwise ~free — `STABLE rls.context()`
+  is index-friendly and the `set_config` injection is sub-ms. Restricted mode is
+  unaffected (no bypass clause).
+
+  **Investigation outcome (2026-07-05, empirical against PG 18.4):**
+  - The read-path fix is validated: an **equality-only** restrictive predicate
+    (`"<col>" = rls.context('<key>')::<type>`, no `rls.bypass() OR`) is a Bitmap
+    **Index Scan** (~0.7 ms), stays correct — scoped reads, fail-closed with no
+    context (0 rows), and `WITH CHECK` still rejects foreign writes.
+  - **In-band bypass under FORCE is impossible.** `SET LOCAL row_security = off`
+    *errors* under FORCE (*"use ALTER TABLE NO FORCE ROW LEVEL SECURITY"*). The
+    only in-band bypass is the `OR rls.bypass()` clause — which is exactly what
+    causes the seq scan. So bypass **cannot** stay in the read predicate without
+    the penalty.
+  - A `BYPASSRLS` role bypasses cleanly regardless of predicate (sees all rows
+    with the equality policy + FORCE). So owner-mode bypass must move to a
+    separate **admin connection** — the machinery restricted mode already uses.
+
+  **Consequence — an owner-mode bypass ergonomics decision is required** (see the
+  Open decisions section below): removing the `OR` clause is mandatory for read
+  perf, but it removes owner mode's zero-infra in-band bypass. Touches
+  `Schema/RlsSchemaMacros::isolatedBy`, `Support/RlsFunctions` (drop/retire
+  `rls.bypass()`), `Database/HandlesRlsContext` (bypass application → admin
+  connection), and the restricted-self-escape test (GUC goes away).
+  *Design §5/§7/§8. Found 2026-07-05 via the perf harness spike (Milestone A).*
+
 - [x] **Production leak canary.** `RlsManager::checkForLeak()` clears any stale
   context and surfaces it per config `leak_canary` (`log` default | `throw` |
   `off`). Wired to Octane `RequestReceived` and queue `Looping` — deliberately
