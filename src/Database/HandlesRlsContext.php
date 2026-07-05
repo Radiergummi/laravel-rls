@@ -12,6 +12,8 @@ use Radiergummi\LaravelRls\Exceptions\MissingTenantContext;
 use Throwable;
 
 use function array_values;
+use function assert;
+use function is_string;
 
 trait HandlesRlsContext
 {
@@ -52,6 +54,7 @@ trait HandlesRlsContext
         }
 
         $prefix = config('rls.prefix', 'app.');
+        assert(is_string($prefix));
         $context = app('rls')->current();
 
         // Blank any dimension keys we previously set, so popping/switching context cannot leave a

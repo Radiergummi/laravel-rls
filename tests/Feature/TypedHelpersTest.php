@@ -22,9 +22,9 @@ class TypedHelpersTest extends TestCase
             DB::statement($sql);
         }
 
-        $uuid = '11111111-1111-1111-1111-111111111111';
+        DB::transaction(function () {
+            $uuid = '11111111-1111-1111-1111-111111111111';
 
-        DB::transaction(function () use ($uuid) {
             DB::statement("select set_config('app.tenant_id', ?, true)", [$uuid]);
 
             $value = DB::selectOne('select rls.tenant_id() as v')->v;

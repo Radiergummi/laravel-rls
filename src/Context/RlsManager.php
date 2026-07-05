@@ -15,7 +15,9 @@ use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Exceptions\RlsContextLeaked;
 use RuntimeException;
 
+use function assert;
 use function config;
+use function is_array;
 
 class RlsManager
 {
@@ -43,7 +45,9 @@ class RlsManager
      */
     public static function stripBypassOnDehydrate(Repository $context): void
     {
+        /** @var list<RlsContext> $stack */
         $stack = $context->get(self::KEY, []);
+        assert(is_array($stack));
 
         if ($stack === []) {
             return;
@@ -116,7 +120,10 @@ class RlsManager
     /** @return list<RlsContext> */
     private function stack(): array
     {
-        return $this->context->get(self::KEY, []);
+        $stack = $this->context->get(self::KEY, []);
+        assert(is_array($stack));
+
+        return $stack;
     }
 
     /**
