@@ -54,6 +54,11 @@ and *where* it touches the code.
     strategy isn't synced (the sync callback only touches the default connection,
     and secondary connections resolve lazily). Fine under transaction/wrap.
 
+- [ ] **`tenant_id` assumptions hard-coded.** Some facilities like 
+  `\Radiergummi\LaravelRls\Testing\InteractsWithRls` assume the `tenant_id`
+  dimension is always present, while the library must never make any assumptions
+  about the schema or tenancy layout.
+
 ---
 
 ## P1 — Feature completeness
