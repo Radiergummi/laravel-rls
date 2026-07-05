@@ -6,7 +6,7 @@ namespace Radiergummi\LaravelRls\Exceptions;
 
 use RuntimeException;
 
-class MissingTenantContext extends RuntimeException
+class MissingIsolationContext extends RuntimeException
 {
     public static function forQuery(string $query): self
     {

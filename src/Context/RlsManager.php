@@ -186,7 +186,7 @@ class RlsManager
         }
 
         foreach ($values as $key => $value) {
-            // null is the fail-closed sentinel (a tenant-less user, a not-yet-set isolation key):
+            // null is the fail-closed sentinel (a context-less user, a not-yet-set isolation key):
             // it serializes to an empty GUC that rls.context() reads as NULL, yielding zero rows —
             // safe, not malformed. Validating it would 500 the Authenticated listener for every
             // such user.
@@ -352,7 +352,7 @@ class RlsManager
 
     /**
      * Runtime leak canary. On long-lived workers (queue, Octane) a context that was never popped
-     * would silently carry over into the next unit of work — a cross-tenant hazard. Called at each
+     * would silently carry over into the next unit of work — a cross-context hazard. Called at each
      * request/job boundary: if the stack is not empty, it clears the stale context and surfaces it
      * per the configured mode ('log' | 'throw' | 'off').
      *

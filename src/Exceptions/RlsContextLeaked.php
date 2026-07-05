@@ -16,7 +16,7 @@ class RlsContextLeaked extends RuntimeException
         return new self(
             "RLS context leaked into a new {$boundary} (the context stack was not empty at"
             . " its start). Leaked dimensions: {$keys}. This means a previous {$boundary} on this"
-            . ' worker did not clear its context, which is a cross-tenant isolation hazard.'
+            . ' worker did not clear its context, which is a cross-context isolation hazard.'
             . ' The stale context has been cleared.',
         );
     }

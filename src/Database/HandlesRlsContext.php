@@ -8,7 +8,7 @@ use Closure;
 use Illuminate\Database\LostConnectionException;
 use Illuminate\Database\QueryException;
 use Radiergummi\LaravelRls\Exceptions\MissingContextBoundary;
-use Radiergummi\LaravelRls\Exceptions\MissingTenantContext;
+use Radiergummi\LaravelRls\Exceptions\MissingIsolationContext;
 use Throwable;
 
 use function array_values;
@@ -160,7 +160,7 @@ trait HandlesRlsContext
      * @param array<int, mixed>                                $bindings
      * @param Closure(string, array<int|string, mixed>): mixed $callback
      *
-     * @throws MissingTenantContext
+     * @throws MissingIsolationContext
      * @throws Throwable
      * @throws MissingContextBoundary
      * @throws QueryException
@@ -182,7 +182,7 @@ trait HandlesRlsContext
      * is untouched.
      *
      * @throws MissingContextBoundary
-     * @throws MissingTenantContext
+     * @throws MissingIsolationContext
      */
     protected function guardRlsBoundary(string $query): void
     {
@@ -214,7 +214,7 @@ trait HandlesRlsContext
 
         if (!$manager->hasContext()) {
             if ($failLoud) {
-                throw MissingTenantContext::forQuery($query);
+                throw MissingIsolationContext::forQuery($query);
             }
 
             return;

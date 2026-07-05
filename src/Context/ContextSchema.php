@@ -58,9 +58,9 @@ class ContextSchema
     }
 
     /**
-     * Whether the given value is a well-formed instance of the dimension's declared Postgres type.
+     * Whether the given value is a well-formed instance of the isolation key's declared Postgres type.
      *
-     * Undeclared dimensions are unconstrained.
+     * Undeclared isolation keys are unconstrained.
      */
     public function matches(string $name, mixed $value): bool
     {

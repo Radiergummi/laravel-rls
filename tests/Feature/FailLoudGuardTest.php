@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use PHPUnit\Framework\Attributes\Test;
-use Radiergummi\LaravelRls\Exceptions\MissingTenantContext;
+use Radiergummi\LaravelRls\Exceptions\MissingIsolationContext;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Tests\Models\Document;
 use Radiergummi\LaravelRls\Tests\TestCase;
@@ -15,7 +15,7 @@ class FailLoudGuardTest extends TestCase
     #[Test]
     public function query_on_managed_table_without_context_throws(): void
     {
-        $this->expectException(MissingTenantContext::class);
+        $this->expectException(MissingIsolationContext::class);
 
         Document::count();
     }
