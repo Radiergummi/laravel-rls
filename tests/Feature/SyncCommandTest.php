@@ -20,9 +20,12 @@ class SyncCommandTest extends TestCase
     {
         Rls::defineContext(static fn(ContextSchema $context) => $context->uuid('tenant_id'));
 
+        // run() forces the command to execute now; a PendingCommand held in a
+        // variable otherwise defers execution to its destructor, which fires
+        // *after* the assertions below — the helper would not yet exist.
         $result = $this->artisan('rls:sync');
         assert($result instanceof PendingCommand);
-        $result->assertExitCode(0);
+        $result->assertExitCode(0)->run();
 
         $exists = DB::selectOne(
             'select 1 as e from pg_proc p join pg_namespace n on n.oid = p.pronamespace '

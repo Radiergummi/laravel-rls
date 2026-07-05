@@ -117,13 +117,12 @@ class RlsManager
         return $stack === [] ? null : $stack[array_key_last($stack)];
     }
 
-    /** @return list<RlsContext> */
+    /**
+     * @return list<RlsContext>
+     */
     private function stack(): array
     {
-        $stack = $this->context->get(self::KEY, []);
-        assert(is_array($stack));
-
-        return $stack;
+        return $this->context->get(self::KEY, []);
     }
 
     /**

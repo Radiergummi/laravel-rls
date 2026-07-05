@@ -26,9 +26,12 @@ class RlsCheckCommandTest extends TestCase
         });
 
         try {
+            // run() forces execution before finally drops the table; a
+            // PendingCommand held in a variable defers to its destructor, which
+            // fires after the table is gone (so the audit would see nothing).
             $result = $this->artisan('rls:check');
             assert($result instanceof PendingCommand);
-            $result->assertExitCode(0);
+            $result->assertExitCode(0)->run();
         } finally {
             Schema::dropIfExists('checked_things');
         }
@@ -46,11 +49,15 @@ class RlsCheckCommandTest extends TestCase
         DB::statement('alter table "orphan_rls" enable row level security');
 
         try {
+            // run() forces execution before finally drops the table; a
+            // PendingCommand held in a variable defers to its destructor, which
+            // fires after the table is gone (so the audit would see nothing).
             $result = $this->artisan('rls:check');
             assert($result instanceof PendingCommand);
             $result
                 ->expectsOutputToContain('orphan_rls')
-                ->assertExitCode(1);
+                ->assertExitCode(1)
+                ->run();
         } finally {
             Schema::dropIfExists('orphan_rls');
         }
