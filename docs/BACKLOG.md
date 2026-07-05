@@ -4,6 +4,9 @@ Remaining work to take `laravel-rls` from validated PoC to a package you'd
 publish. Ordered roughly by priority within each group. Each item notes *why*
 and *where* it touches the code.
 
+> Post-PoC, pre-release tracks (performance harness, adversarial security suite,
+> version-matrix CI) live in [`MILESTONES.md`](MILESTONES.md).
+
 ---
 
 ## P0 — Correctness & safety hardening (do before any real use)
