@@ -18,7 +18,7 @@ use function is_string;
 trait HandlesRlsContext
 {
     /**
-     * Dimension keys we set on the current transaction, so we can blank them when the context
+     * Isolation keys we set on the current transaction, so we can blank them when the context
      * changes or is popped (transaction-local GUCs have no "unset", so we reset to empty string,
      * which rls.context() reads as NULL).
      *

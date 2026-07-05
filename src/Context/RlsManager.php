@@ -195,7 +195,7 @@ class RlsManager
             }
 
             if (!$this->schema->matches($key, $value)) {
-                throw InvalidContextValue::forDimension(
+                throw InvalidContextValue::forIsolationKey(
                     $key,
                     $this->schema->isolationKeys()[$key],
                     $value,
