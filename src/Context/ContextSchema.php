@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 use Stringable;
 
 /**
- * Declares the app's context dimensions and their Postgres types, used to generate typed SQL
+ * Declares the app's isolation keys and their Postgres types, used to generate typed SQL
  * helpers (rls.tenant_id()) and typed PHP accessors.
  */
 class ContextSchema
@@ -101,13 +101,13 @@ class ContextSchema
     /**
      * @return array<string, string>
      */
-    public function dimensions(): array
+    public function isolationKeys(): array
     {
         return $this->dimensions;
     }
 
     /**
-     * Generate a typed helper per dimension, e.g., `rls.tenant_id()` returns
+     * Generate a typed helper per isolation key, e.g., `rls.tenant_id()` returns
      * `uuid := rls.context('tenant_id')::uuid`.
      *
      * @return array<int, string>

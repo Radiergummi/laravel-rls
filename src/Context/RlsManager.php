@@ -68,7 +68,7 @@ class RlsManager
     }
 
     /**
-     * Declare the app's context dimensions (opt-in sugar).
+     * Declare the app's isolation keys (opt-in sugar).
      *
      * Enables typed PHP accessors (Rls::tenantId()) and typed SQL helper generation.
      *
@@ -86,7 +86,7 @@ class RlsManager
         return $this->schema;
     }
 
-    /** Typed accessors for declared dimensions, e.g. Rls::tenantId().
+    /** Typed accessors for declared isolation keys, e.g. Rls::tenantId().
      *
      * @param list<mixed> $arguments
      *
@@ -101,7 +101,7 @@ class RlsManager
         }
 
         throw new BadMethodCallException(
-            "Method {$method}() is not a declared RLS context dimension.",
+            "Method {$method}() is not a declared RLS isolation key.",
         );
     }
 
@@ -172,7 +172,7 @@ class RlsManager
     /**
      * Validate context values against the declared schema before they leave PHP.
      *
-     * A malformed value (e.g., a non-UUID for an uuid dimension) would otherwise reach Postgres and
+     * A malformed value (e.g., a non-UUID for an uuid isolation key) would otherwise reach Postgres and
      * throw on every query — a cluster-wide failure.
      *
      * @param array<string, mixed> $values
@@ -186,7 +186,7 @@ class RlsManager
         }
 
         foreach ($values as $key => $value) {
-            // null is the fail-closed sentinel (a tenant-less user, a not-yet-set dimension):
+            // null is the fail-closed sentinel (a tenant-less user, a not-yet-set isolation key):
             // it serializes to an empty GUC that rls.context() reads as NULL, yielding zero rows —
             // safe, not malformed. Validating it would 500 the Authenticated listener for every
             // such user.
@@ -197,7 +197,7 @@ class RlsManager
             if (!$this->schema->matches($key, $value)) {
                 throw InvalidContextValue::forDimension(
                     $key,
-                    $this->schema->dimensions()[$key],
+                    $this->schema->isolationKeys()[$key],
                     $value,
                 );
             }
