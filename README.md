@@ -42,7 +42,7 @@ scopes by and everything downstream (`isolatedBy`, `rls:check`, the test helpers
 
 ```php
 // Declare your dimensions (opt-in — enables typed accessors + value validation)
-Rls::defineContext(fn ($c) => $c->uuid('org_id')->integer('region_id'));
+Rls::defineContext(fn (ContextSchema $context) => $context->uuid('org_id')->integer('region_id'));
 
 // Scope tables by any column / type
 $table->isolatedBy('org_id');

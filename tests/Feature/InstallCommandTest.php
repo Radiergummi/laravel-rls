@@ -7,13 +7,16 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Testing\PendingCommand;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
 use function assert;
 
+#[TestDox('rls:install Command')]
 class InstallCommandTest extends TestCase
 {
     #[Test]
+    #[TestDox('rls:install registers publishable config, migration, and provider groups')]
     public function registers_publishable_groups(): void
     {
         $groups = ServiceProvider::$publishGroups;
@@ -24,6 +27,7 @@ class InstallCommandTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('The provider stub scaffolds defineContext() and resolveContextUsing()')]
     public function provider_stub_scaffolds_context_and_resolver(): void
     {
         $stub = file_get_contents(__DIR__ . '/../../stubs/rls-provider.stub') ?: '';
@@ -33,6 +37,7 @@ class InstallCommandTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('rls:install runs and prints next steps')]
     public function install_command_runs_and_prints_next_steps(): void
     {
         $result = $this->artisan('rls:install', ['--force' => true]);

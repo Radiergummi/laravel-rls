@@ -7,13 +7,16 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 use BadMethodCallException;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Context\ContextSchema;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
+#[TestDox('Typed Helpers')]
 class TypedHelpersTest extends TestCase
 {
     #[Test]
+    #[TestDox('Generated SQL helper casts context to the declared type')]
     public function generated_sql_helper_casts_context_to_the_declared_type(): void
     {
         Rls::defineContext(static fn(ContextSchema $context) => $context->uuid('tenant_id'));
@@ -27,16 +30,17 @@ class TypedHelpersTest extends TestCase
 
             DB::statement("select set_config('app.tenant_id', ?, true)", [$uuid]);
 
-            $value = DB::selectOne('select rls.tenant_id() as v')->v;
+            $value = DB::selectOne('select rls.tenant_id() as value')->value;
 
             $this->assertSame($uuid, $value);
         });
     }
 
     #[Test]
-    public function typed_php_accessor_reads_the_dimension(): void
+    #[TestDox('Typed PHP accessor reads the isolation key')]
+    public function typed_php_accessor_reads_the_isolation_key(): void
     {
-        Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
+        Rls::defineContext(static fn(ContextSchema $context) => $context->uuid('tenant_id'));
 
         $uuid = '22222222-2222-2222-2222-222222222222';
 
@@ -49,9 +53,10 @@ class TypedHelpersTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('Unknown/Undeclared accessor throws an exception')]
     public function unknown_accessor_throws(): void
     {
-        Rls::defineContext(fn($c) => $c->uuid('tenant_id'));
+        Rls::defineContext(static fn(ContextSchema $context) => $context->uuid('tenant_id'));
 
         $this->expectException(BadMethodCallException::class);
 

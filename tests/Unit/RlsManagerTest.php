@@ -7,6 +7,7 @@ namespace Radiergummi\LaravelRls\Tests\Unit;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Log\Context\Repository;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use PHPUnit\Framework\TestCase;
 use Radiergummi\LaravelRls\Context\ContextSchema;
 use Radiergummi\LaravelRls\Context\RlsManager;
@@ -14,9 +15,11 @@ use Radiergummi\LaravelRls\Events\RlsBypassed;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use RuntimeException;
 
+#[TestDox('RLS Manager')]
 class RlsManagerTest extends TestCase
 {
     #[Test]
+    #[TestDox('A fresh manager has no context, current(), or values')]
     public function starts_empty(): void
     {
         $manager = $this->manager();
@@ -35,6 +38,7 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('isolateTo() with a callback pushes context and pops it after execution')]
     public function acting_as_scoped_pushes_and_pops(): void
     {
         $manager = $this->manager();
@@ -53,6 +57,7 @@ class RlsManagerTest extends TestCase
      * @throws InvalidContextValue
      */
     #[Test]
+    #[TestDox('isolateTo() pops context even when the callback throws')]
     public function acting_as_pops_even_on_exception(): void
     {
         $manager = $this->manager();
@@ -72,6 +77,7 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('isolateTo() without a callback persists the context')]
     public function acting_as_imperative_persists(): void
     {
         $manager = $this->manager();
@@ -85,6 +91,7 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('Nested isolateTo() calls stack, restoring the outer context after the inner one')]
     public function nested_contexts_stack(): void
     {
         $manager = $this->manager();
@@ -100,6 +107,7 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('withoutIsolation() establishes a bypass context for its duration')]
     public function without_rls_is_a_bypass_scope(): void
     {
         $manager = $this->manager();
@@ -115,6 +123,7 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('set() merges a value into the current context')]
     public function set_merges_into_current(): void
     {
         $manager = $this->manager();
@@ -128,6 +137,7 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('isolateTo() rejects a value that violates the declared context schema')]
     public function rejects_value_violating_declared_type(): void
     {
         $manager = $this->manager();
@@ -143,10 +153,11 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('isolateTo() accepts a value matching the declared context schema')]
     public function accepts_value_matching_declared_type(): void
     {
         $manager = $this->manager();
-        $manager->defineContext(fn($c) => $c->uuid('tenant_id'));
+        $manager->defineContext(fn(ContextSchema $context) => $context->uuid('tenant_id'));
 
         $manager->isolateTo(['tenant_id' => '11111111-1111-1111-1111-111111111111']);
 
@@ -158,10 +169,11 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
-    public function undeclared_dimension_is_not_validated(): void
+    #[TestDox('An isolation key without a declared schema is not validated')]
+    public function undeclared_key_is_not_validated(): void
     {
         $manager = $this->manager();
-        $manager->defineContext(fn($c) => $c->uuid('tenant_id'));
+        $manager->defineContext(fn(ContextSchema $context) => $context->uuid('tenant_id'));
 
         $manager->isolateTo([
             'tenant_id' => '11111111-1111-1111-1111-111111111111',
@@ -175,10 +187,11 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
-    public function rejects_non_integer_for_integer_dimension(): void
+    #[TestDox('isolateTo() rejects a non-integer value for an integer isolation key')]
+    public function rejects_non_integer_for_integer_key(): void
     {
         $manager = $this->manager();
-        $manager->defineContext(fn($c) => $c->integer('org_id'));
+        $manager->defineContext(fn(ContextSchema $context) => $context->integer('org_id'));
 
         $this->expectException(InvalidContextValue::class);
 
@@ -189,10 +202,11 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('set() also validates against the declared context schema')]
     public function set_also_validates(): void
     {
         $manager = $this->manager();
-        $manager->defineContext(fn($c) => $c->uuid('tenant_id'));
+        $manager->defineContext(fn(ContextSchema $context) => $context->uuid('tenant_id'));
 
         $this->expectException(InvalidContextValue::class);
 
@@ -204,6 +218,7 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('Without a declared context schema, isolateTo() performs no validation')]
     public function no_schema_means_no_validation(): void
     {
         $manager = $this->manager();
@@ -218,6 +233,7 @@ class RlsManagerTest extends TestCase
      * @throws RuntimeException
      */
     #[Test]
+    #[TestDox('withoutIsolation() dispatches an RlsBypassed event carrying the reason')]
     public function without_rls_dispatches_a_bypass_event_with_the_reason(): void
     {
         $events = new Dispatcher();

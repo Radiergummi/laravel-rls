@@ -7,6 +7,8 @@ namespace Radiergummi\LaravelRls\Database;
 use Closure;
 use Illuminate\Database\LostConnectionException;
 use Illuminate\Database\QueryException;
+use InvalidArgumentException;
+use Radiergummi\LaravelRls\Context\RlsManager;
 use Radiergummi\LaravelRls\Exceptions\MissingContextBoundary;
 use Radiergummi\LaravelRls\Exceptions\MissingIsolationContext;
 use Throwable;
@@ -42,6 +44,8 @@ trait HandlesRlsContext
      * Set transaction-local GUCs for the current context (idempotent).
      *
      * A no-op outside a transaction — context is injected at the next beginTransaction() instead.
+     *
+     * @throws InvalidArgumentException
      */
     public function applyRlsContext(): void
     {
@@ -55,13 +59,14 @@ trait HandlesRlsContext
 
         $prefix = config('rls.prefix', 'app.');
         assert(is_string($prefix));
-        $context = app('rls')->current();
+        $context = app(RlsManager::class)->current();
 
         // Blank any isolation keys we previously set, so popping/switching context cannot leave a
         // stale value behind.
         foreach ($this->rlsAppliedKeys as $key) {
             $this->setConfig($prefix . $key, '', $local);
         }
+
         $this->rlsAppliedKeys = [];
 
         $this->setConfig($prefix . 'bypass', $context?->isBypass() ? 'on' : '', $local);
@@ -85,7 +90,11 @@ trait HandlesRlsContext
         // replica) that plain SELECTs route to, so the context must be mirrored there too.
         // Transaction-local GUCs need no mirroring: in-transaction reads use the Write PDO.
         if (!$local && $this->hasDistinctReadPdo()) {
-            $this->select("select set_config(?, ?, {$flag})", [$name, $value], true);
+            $this->select(
+                "select set_config(?, ?, {$flag})",
+                [$name, $value],
+                useReadPdo: true,
+            );
         }
     }
 
@@ -101,6 +110,10 @@ trait HandlesRlsContext
      * Booleans must map to a Postgres boolean literal rather than PHP's (string) cast: (string)
      * false is '', which rls.context() reads as NULL — collapsing a `false` scope into "no context"
      * and silently mis-scoping every row. null stays '' on purpose (the fail-closed sentinel).
+     *
+     * @param null|scalar $value
+     *
+     * @throws InvalidArgumentException
      */
     private function stringifyGucValue(mixed $value): string
     {
@@ -143,6 +156,7 @@ trait HandlesRlsContext
      * run unscoped / fail-closed).
      *
      * @throws LostConnectionException
+     * @throws InvalidArgumentException
      */
     public function reconnect(): mixed
     {

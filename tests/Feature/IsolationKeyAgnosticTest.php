@@ -6,28 +6,28 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Testing\InteractsWithRls;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
-/**
- * The isolation assertion helpers must work for any declared dimension, not
- * only tenant_id — here, a table scoped by org_id.
- */
-class AgnosticDimensionHelpersTest extends TestCase
+#[TestDox('Isolation Key Agnostic')]
+class IsolationKeyAgnosticTest extends TestCase
 {
     use InteractsWithRls;
 
     #[Test]
-    public function isolation_helper_works_for_a_non_tenant_dimension(): void
+    #[TestDox('assertIsolates() works for a non-tenant isolation key')]
+    public function isolation_helper_works_for_a_non_tenant_key(): void
     {
         $a = (string) Str::uuid();
         $b = (string) Str::uuid();
 
-        $this->withoutIsolation('seed', function () use ($a, $b) {
+        $this->withoutIsolation('seed', function () use ($a, $b): void {
             DB::table('org_things')->insert(['id' => Str::uuid(), 'org_id' => $a]);
             DB::table('org_things')->insert(['id' => Str::uuid(), 'org_id' => $b]);
         });
@@ -36,7 +36,8 @@ class AgnosticDimensionHelpersTest extends TestCase
     }
 
     #[Test]
-    public function cross_dimension_writes_are_rejected_for_a_non_tenant_dimension(): void
+    #[TestDox('assertRejectsForeignWrite() rejects cross-key writes for a non-tenant isolation key')]
+    public function cross_key_writes_are_rejected_for_a_non_tenant_key(): void
     {
         $a = (string) Str::uuid();
         $b = (string) Str::uuid();
@@ -48,7 +49,7 @@ class AgnosticDimensionHelpersTest extends TestCase
     {
         parent::setUp();
 
-        Schema::create('org_things', function ($table) {
+        Schema::create('org_things', static function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('org_id');
             $table->isolatedBy('org_id');

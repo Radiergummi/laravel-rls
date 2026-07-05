@@ -47,9 +47,9 @@ class CheckCommand extends Command
             )?->relrowsecurity;
 
             $policies = DB::selectOne(
-                'select count(*) as c from pg_policies where tablename = ?',
+                'select count(*) as count from pg_policies where tablename = ?',
                 [$table->name],
-            )->c;
+            )->count;
 
             if (!$enabled) {
                 $violations[] = "{$table->name}: RLS not enabled";

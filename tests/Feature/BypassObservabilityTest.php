@@ -7,36 +7,53 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
+use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Tests\TestCase;
+use RuntimeException;
 
+#[TestDox('Bypass Observability')]
 class BypassObservabilityTest extends TestCase
 {
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
     #[Test]
+    #[TestDox('withoutIsolation() dispatches the RlsBypassed event in a booted app')]
     public function bypass_dispatches_the_event_in_a_booted_app(): void
     {
         $captured = null;
-        Event::listen(RlsBypassed::class, function ($event) use (&$captured) {
-            $captured = $event;
-        });
+        Event::listen(
+            RlsBypassed::class,
+            static function (RlsBypassed $event) use (&$captured): void {
+                $captured = $event;
+            },
+        );
 
-        Rls::withoutIsolation('data-migration', fn() => null);
+        Rls::withoutIsolation('data-migration', static fn() => null);
 
         $this->assertInstanceOf(RlsBypassed::class, $captured);
         $this->assertSame('data-migration', $captured->reason);
     }
 
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
     #[Test]
+    #[TestDox('withoutIsolation() logs the bypass with its reason')]
     public function bypass_is_logged_with_its_reason(): void
     {
         $log = Log::spy();
 
-        Rls::withoutIsolation('seeding', fn() => null);
+        Rls::withoutIsolation('seeding', static fn() => null);
 
         $log
             ->shouldHaveReceived('notice')
-            ->withArgs(fn($message, $context = [])
+            ->withArgs(fn(string $message, array $context = [])
                 => str_contains($message, 'seeding')
                 || ($context['reason'] ?? null) === 'seeding')
             ->once();

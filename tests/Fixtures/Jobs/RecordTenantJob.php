@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Radiergummi\LaravelRls\Tests\Jobs;
+namespace Radiergummi\LaravelRls\Tests\Fixtures\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

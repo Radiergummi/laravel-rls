@@ -97,7 +97,7 @@ behavior:
 - `RestrictedIsolationTest` — two real roles, non-owner confined with FORCE off, `system()` routing
 - `ContextBackingTest` — Laravel Context dehydrate/hydrate + bypass stripping
 - `QueuedJobContextTest` — live `queue:work` propagation
-- `TpetryInteropTest` — composability with another connection package
+- `TpetryPostgresqlEnhancedInteropTest` — composability with another connection package
 - `ContextInjectionTest`, `FailLoudGuardTest`, `ExplicitBoundaryTest`,
   `SessionStrategyTest`, `TypedHelpersTest`, `RequestTransactionMiddlewareTest`,
   `AuthContextTest`, `PolicyDslTest`, `Rls{Check,Audit}CommandTest`,

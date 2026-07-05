@@ -14,7 +14,7 @@ class RlsServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        // Declare your context dimensions. Enables typed accessors
+        // Declare your isolation keys. Enables typed accessors
         // (Rls::tenantId()), typed SQL helpers (rls.tenant_id()), and value
         // validation before context reaches the database.
         Rls::defineContext(function (ContextSchema $schema) {
@@ -22,7 +22,7 @@ class RlsServiceProvider extends ServiceProvider
         });
 
         // Map the authenticated identity to context values. Called whenever a
-        // user is authenticated. Return an array of dimension => value.
+        // user is authenticated. Return an array of isolation key => value.
         Rls::resolveContextUsing(fn ($user) => [
             'tenant_id' => $user->tenant_id,
         ]);

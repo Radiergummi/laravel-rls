@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Radiergummi\LaravelRls\Tests\Database\Factories;
+namespace Radiergummi\LaravelRls\Tests\Fixtures\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Radiergummi\LaravelRls\Tests\Models\Tenant;
+use Radiergummi\LaravelRls\Tests\Fixtures\Models\Tenant;
 
 /**
  * @extends Factory<Tenant>

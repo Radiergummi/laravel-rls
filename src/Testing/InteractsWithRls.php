@@ -8,8 +8,14 @@ use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Exception;
 use PHPUnit\Framework\ExpectationFailedException;
+use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
+use RuntimeException;
+use stdClass;
+
+use function is_scalar;
 
 trait InteractsWithRls
 {
@@ -20,6 +26,9 @@ trait InteractsWithRls
      * @param null|Closure(): T    $callback
      *
      * @return T
+     *
+     * @throws InvalidContextValue
+     * @throws RuntimeException
      */
     protected function isolateTo(array $context, ?Closure $callback = null): mixed
     {
@@ -32,6 +41,9 @@ trait InteractsWithRls
      * @param Closure(): T $callback
      *
      * @return T
+     *
+     * @throws InvalidContextValue
+     * @throws RuntimeException
      */
     protected function withoutIsolation(string $reason, Closure $callback): mixed
     {
@@ -40,6 +52,7 @@ trait InteractsWithRls
 
     /**
      * @throws ExpectationFailedException
+     * @throws Exception
      */
     protected function assertTableIsolated(string $table): void
     {
@@ -49,6 +62,8 @@ trait InteractsWithRls
         );
 
         $this->assertNotNull($row, "Table {$table} not found");
+        $this->assertIsObject($row);
+        $this->assertInstanceOf(stdClass::class, $row);
         $this->assertTrue(
             (bool) $row->relrowsecurity,
             "RLS not enabled on {$table}",
@@ -66,7 +81,7 @@ trait InteractsWithRls
                 'select permissive from pg_policies where tablename = ?',
                 [$table],
             ),
-        )->contains(fn($p) => $p->permissive === 'RESTRICTIVE');
+        )->contains(fn($policy) => $policy->permissive === 'RESTRICTIVE');
 
         $this->assertTrue(
             $hasRestrictive,
@@ -77,6 +92,9 @@ trait InteractsWithRls
     /**
      * @param class-string<Model> $modelClass
      * @param string              $isolatedBy the isolation key / model column to scope by
+     *
+     * @throws InvalidContextValue
+     * @throws RuntimeException
      */
     protected function assertIsolates(
         string $modelClass,
@@ -87,20 +105,34 @@ trait InteractsWithRls
         $actingId = $this->resolveKey($acting);
         $otherId = $this->resolveKey($cannotSee);
 
-        Rls::isolateTo([$isolatedBy => $actingId], function () use ($modelClass, $otherId, $isolatedBy) {
+        Rls::isolateTo([$isolatedBy => $actingId], function () use (
+            $modelClass,
+            $otherId,
+            $isolatedBy,
+        ): void {
             $leaked = $modelClass::query()->where($isolatedBy, $otherId)->count();
             $this->assertSame(
                 0,
                 $leaked,
+                // @phpstan-ignore encapsedStringPart.nonString (we know the isolation key is a string)
                 "Rows scoped to {$otherId} are visible to the acting context",
             );
         });
     }
 
+    /**
+     * @template T
+     *
+     * @param T $value
+     *
+     * @return scalar|T
+     */
     protected function resolveKey(mixed $value): mixed
     {
         if (is_object($value) && method_exists($value, 'getKey')) {
-            return $value->getKey();
+            $key = $value->getKey();
+
+            return is_scalar($key) ? $key : $value;
         }
 
         return $value;
@@ -109,6 +141,9 @@ trait InteractsWithRls
     /**
      * @param class-string<Model> $modelClass
      * @param string              $isolatedBy the isolation key / model column to scope by
+     *
+     * @throws InvalidContextValue
+     * @throws RuntimeException
      */
     protected function assertRejectsForeignWrite(
         string $modelClass,
@@ -119,7 +154,11 @@ trait InteractsWithRls
         $actingId = $this->resolveKey($acting);
         $foreignId = $this->resolveKey($foreign);
 
-        Rls::isolateTo([$isolatedBy => $actingId], function () use ($modelClass, $foreignId, $isolatedBy) {
+        Rls::isolateTo([$isolatedBy => $actingId], function () use (
+            $modelClass,
+            $foreignId,
+            $isolatedBy,
+        ): void {
             try {
                 // Run in a savepoint so the expected policy violation rolls back cleanly without
                 // aborting any surrounding transaction.

@@ -30,7 +30,7 @@ The macro and its fluent return type are one coupled unit.
 - Modify: `src/Schema/RlsSchemaMacros.php`
 - Rename + modify: `src/Schema/ScopedByDefinition.php` → `src/Schema/IsolatedByDefinition.php`
 - Modify: `src/Console/InstallCommand.php`, `src/Console/CheckCommand.php`
-- Modify (test call sites): `tests/database/migrations/0001_01_01_000002_create_documents_table.php`, `tests/Feature/WithDefaultTest.php`, `tests/Feature/TestingHelpersTest.php`, `tests/Feature/RestrictedModeDslTest.php`, `tests/Feature/PolicyDslTest.php`, `tests/Feature/RlsCheckCommandTest.php`, `tests/Feature/AgnosticDimensionHelpersTest.php`
+- Modify (test call sites): `../../../tests/Fixtures/database/migrations/0001_01_01_000002_create_documents_table.php`, `tests/Feature/WithDefaultTest.php`, `tests/Feature/TestingHelpersTest.php`, `tests/Feature/RestrictedModeDslTest.php`, `tests/Feature/PolicyDslTest.php`, `tests/Feature/RlsCheckCommandTest.php`, `tests/Feature/AgnosticDimensionHelpersTest.php`
 - Modify (docs): `README.md`
 
 **Interfaces:**
@@ -134,7 +134,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Modify: `src/Context/RlsManager.php` (method), `src/Facades/Rls.php` (`@method`)
 - Modify: `src/Console/AuditCommand.php` (scan regex)
 - Modify (call sites): `src/Testing/InteractsWithRls.php` (internal `Rls::withoutRls` calls only), `src/RlsServiceProvider.php` if present
-- Modify (tests + fixtures): `tests/fixtures/audit/BypassSample.php`, `tests/Feature/FailLoudGuardTest.php`, `tests/Feature/BypassObservabilityTest.php`, `tests/Feature/RestrictedIsolationTest.php`, `tests/Unit/RlsManagerTest.php`, `tests/Feature/TestingHelpersTest.php`, `tests/Feature/ContextInjectionTest.php`, and any file matching the grep below
+- Modify (tests + fixtures): `../../../tests/Fixtures/Audit/BypassSample.php`, `tests/Feature/FailLoudGuardTest.php`, `tests/Feature/BypassObservabilityTest.php`, `tests/Feature/RestrictedIsolationTest.php`, `tests/Unit/RlsManagerTest.php`, `tests/Feature/TestingHelpersTest.php`, `tests/Feature/ContextInjectionTest.php`, and any file matching the grep below
 - Modify (docs): `README.md`
 
 **Interfaces:**
@@ -157,7 +157,7 @@ $pattern = '/(?:Rls::|\$?this->|->)\s*(withoutIsolation|system)\s*\(/';
 
 - [ ] **Step 3: Update the audit fixture and all call sites**
 
-`tests/fixtures/audit/BypassSample.php` is scanned by the audit tests — its `withoutRls` calls must become `withoutIsolation` so the counts still match. Then sweep all callers:
+`../../../tests/Fixtures/Audit/BypassSample.php` is scanned by the audit tests — its `withoutRls` calls must become `withoutIsolation` so the counts still match. Then sweep all callers:
 
 ```bash
 grep -rn "withoutRls" src/ tests/ README.md

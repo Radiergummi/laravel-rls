@@ -10,6 +10,7 @@ use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\DB;
 use Orchestra\Testbench\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
@@ -20,9 +21,11 @@ use Radiergummi\LaravelRls\Support\RlsFunctions;
  * without wrapping each in a transaction. Runs without RefreshDatabase so
  * queries execute at transaction level 0.
  */
+#[TestDox('Session Strategy')]
 class SessionStrategyTest extends TestCase
 {
     #[Test]
+    #[TestDox('Session context persists across bare queries without a transaction')]
     public function session_context_persists_across_bare_queries_without_a_transaction(): void
     {
         $this->assertSame(0, DB::transactionLevel());
@@ -30,40 +33,43 @@ class SessionStrategyTest extends TestCase
         Rls::isolateTo(['tenant_id' => 'session-tenant']);
 
         // Two separate bare queries (no transaction) both see the session GUC.
-        $this->assertSame('session-tenant', DB::selectOne("select rls.context('tenant_id') as v")->v);
-        $this->assertSame('session-tenant', DB::selectOne("select rls.context('tenant_id') as v")->v);
+        $this->assertSame('session-tenant', DB::selectOne("select rls.context('tenant_id') as value")->value);
+        $this->assertSame('session-tenant', DB::selectOne("select rls.context('tenant_id') as value")->value);
         $this->assertSame(0, DB::transactionLevel(), 'no per-query transaction was opened');
     }
 
     #[Test]
+    #[TestDox('resetSessionContext() clears the session GUC')]
     public function reset_session_context_clears_the_session_guc(): void
     {
         Rls::isolateTo(['tenant_id' => 'to-be-cleared']);
-        $this->assertSame('to-be-cleared', DB::selectOne("select rls.context('tenant_id') as v")->v);
+        $this->assertSame('to-be-cleared', DB::selectOne("select rls.context('tenant_id') as value")->value);
 
         $connection = DB::connection();
         $this->assertInstanceOf(RlsPostgresConnection::class, $connection);
         $connection->resetSessionContext();
 
-        $this->assertNull(DB::selectOne("select rls.context('tenant_id') as v")->v);
+        $this->assertNull(DB::selectOne("select rls.context('tenant_id') as value")->value);
     }
 
     /**
      * @throws LostConnectionException
      */
     #[Test]
+    #[TestDox('Reconnecting the connection reestablishes the session context')]
     public function reconnect_reestablishes_session_context(): void
     {
         Rls::isolateTo(['tenant_id' => 'survives-reconnect']);
-        $this->assertSame('survives-reconnect', DB::selectOne("select rls.context('tenant_id') as v")->v);
+        $this->assertSame('survives-reconnect', DB::selectOne("select rls.context('tenant_id') as value")->value);
 
         // A fresh backend would have no session GUC; re-establishment restores it.
         DB::connection()->reconnect();
 
-        $this->assertSame('survives-reconnect', DB::selectOne("select rls.context('tenant_id') as v")->v);
+        $this->assertSame('survives-reconnect', DB::selectOne("select rls.context('tenant_id') as value")->value);
     }
 
     #[Test]
+    #[TestDox('A false context value serializes to a boolean literal, not null')]
     public function boolean_false_context_serializes_to_a_boolean_literal_not_null(): void
     {
         // Regression: (string) false is '', which rls.context() reads as NULL —
@@ -72,23 +78,24 @@ class SessionStrategyTest extends TestCase
 
         $this->assertSame(
             'false',
-            DB::selectOne("select rls.context('active') as v")->v,
+            DB::selectOne("select rls.context('active') as value")->value,
             'false must not collapse to an empty GUC (NULL)',
         );
         $this->assertSame(
             'false',
-            DB::selectOne("select rls.context('active')::boolean::text as v")->v,
+            DB::selectOne("select rls.context('active')::boolean::text as value")->value,
             'the GUC must cast to boolean false',
         );
     }
 
     #[Test]
+    #[TestDox('A worker boundary flushes a session GUC left by a prior request')]
     public function worker_boundary_flushes_a_session_guc_left_by_a_prior_request(): void
     {
         // A prior request sets context: the session GUC is set and its keys are
         // tracked on the (persistent) connection.
         Rls::isolateTo(['tenant_id' => 'req-a-tenant']);
-        $this->assertSame('req-a-tenant', DB::selectOne("select rls.context('tenant_id') as v")->v);
+        $this->assertSame('req-a-tenant', DB::selectOne("select rls.context('tenant_id') as value")->value);
 
         // Simulate an Octane/worker scope reset: the scoped context stack is
         // discarded, but the persistent connection keeps its session GUC — so
@@ -97,14 +104,14 @@ class SessionStrategyTest extends TestCase
         $this->assertFalse(Rls::hasContext());
         $this->assertSame(
             'req-a-tenant',
-            DB::selectOne("select rls.context('tenant_id') as v")->v,
+            DB::selectOne("select rls.context('tenant_id') as value")->value,
             'the GUC is still leaked on the connection',
         );
 
         // The boundary flush clears it before the next request/job runs.
         event(new Looping('pgsql', 'default'));
 
-        $this->assertNull(DB::selectOne("select rls.context('tenant_id') as v")->v);
+        $this->assertNull(DB::selectOne("select rls.context('tenant_id') as value")->value);
     }
 
     protected function getPackageProviders($app): array

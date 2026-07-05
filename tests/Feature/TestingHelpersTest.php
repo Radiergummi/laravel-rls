@@ -8,21 +8,25 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Testing\InteractsWithRls;
 use Radiergummi\LaravelRls\Tests\TestCase;
 
+#[TestDox('Testing Helpers')]
 class TestingHelpersTest extends TestCase
 {
     use InteractsWithRls;
 
     #[Test]
-    public function assert_table_protected_passes(): void
+    #[TestDox('assertTableIsolated() asserts that a table is isolated')]
+    public function assert_table_isolated_passes(): void
     {
         $this->assertTableIsolated('gadgets');
     }
 
     #[Test]
-    public function with_rls_context_scopes_reads(): void
+    #[TestDox('isolateTo() scopes reads')]
+    public function isolate_to_scopes_reads(): void
     {
         $a = (string) Str::uuid();
         $b = (string) Str::uuid();

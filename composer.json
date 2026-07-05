@@ -21,7 +21,7 @@
         "phpstan/phpstan-mockery": "^2.0"
     },
     "scripts": {
-        "test": "vendor/bin/phpunit --configuration=phpunit.xml --cache-directory=vendor/.cache/phpunit --cache-result",
+        "test": "vendor/bin/phpunit --configuration=phpunit.xml",
         "lint": "phpstan analyse --memory-limit=1G --configuration=phpstan.neon",
         "format": "pint --parallel --max-processes=auto --cache-file=vendor/.cache/pint.json",
         "fmt": "@format"
@@ -30,7 +30,10 @@
         "psr-4": { "Radiergummi\\LaravelRls\\": "src/" }
     },
     "autoload-dev": {
-        "psr-4": { "Radiergummi\\LaravelRls\\Tests\\": "tests/" }
+        "psr-4": {
+            "Radiergummi\\LaravelRls\\Tests\\": "tests/",
+            "Radiergummi\\LaravelRls\\Tests\\Fixtures\\Database\\Factories\\": "tests/Fixtures/database/factories/"
+        }
     },
     "extra": {
         "laravel": {

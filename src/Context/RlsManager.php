@@ -19,6 +19,11 @@ use function assert;
 use function config;
 use function is_array;
 
+/**
+ * RLS Manager
+ *
+ * @template TUser = mixed
+ */
 class RlsManager
 {
     private const KEY = 'rls';
@@ -29,7 +34,7 @@ class RlsManager
     /** @var null|Closure(string, Closure(): mixed): mixed */
     private ?Closure $bypassHandler = null;
 
-    /** @var null|Closure(mixed): mixed */
+    /** @var null|Closure(TUser): mixed */
     private ?Closure $resolver = null;
 
     private ?ContextSchema $schema = null;
@@ -68,7 +73,7 @@ class RlsManager
     }
 
     /**
-     * Declare the app's isolation keys (opt-in sugar).
+     * Declare the app's isolation keys (opt in sugar).
      *
      * Enables typed PHP accessors (Rls::tenantId()) and typed SQL helper generation.
      *
@@ -86,7 +91,8 @@ class RlsManager
         return $this->schema;
     }
 
-    /** Typed accessors for declared isolation keys, e.g. Rls::tenantId().
+    /**
+     * Typed accessors for declared isolation keys, e.g., `Rls::tenantId()`.
      *
      * @param list<mixed> $arguments
      *
@@ -122,6 +128,7 @@ class RlsManager
      */
     private function stack(): array
     {
+        /** @var list<RlsContext> */
         return $this->context->get(self::KEY, []);
     }
 
@@ -130,7 +137,7 @@ class RlsManager
      *
      * Called from the publishable RlsServiceProvider.
      *
-     * @param Closure(mixed): mixed $resolver
+     * @param Closure(TUser): mixed $resolver
      */
     public function resolveContextUsing(Closure $resolver): void
     {
@@ -141,6 +148,8 @@ class RlsManager
      * Establish context from a freshly authenticated user, using the app's resolver.
      *
      * A no-op if no resolver is registered, or it yields nothing.
+     *
+     * @param TUser $user
      *
      * @throws InvalidContextValue
      * @throws RuntimeException
@@ -154,6 +163,7 @@ class RlsManager
         $context = ($this->resolver)($user);
 
         if (is_array($context) && $context !== []) {
+            // @var array<string, scalar|null> $context
             $this->push(RlsContext::make($context));
         }
     }
@@ -241,6 +251,8 @@ class RlsManager
     }
 
     /**
+     * @param null|scalar $value
+     *
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
@@ -276,8 +288,8 @@ class RlsManager
     /**
      * @template T = mixed
      *
-     * @param array<string, mixed> $context
-     * @param null|Closure(): T    $callback
+     * @param array<string, null|scalar> $context
+     * @param null|Closure(): T          $callback
      *
      * @return ($callback is null ? null : T)
      *

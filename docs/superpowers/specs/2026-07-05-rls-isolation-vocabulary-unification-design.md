@@ -150,9 +150,9 @@ reintroduction of the retired `actingAs` verb.
   `ContextInjectionTest`, `ContextBackingTest`, `FailLoudGuardTest`,
   `BypassObservabilityTest`.
 - `tests/Unit/RlsManagerTest.php`.
-- `tests/fixtures/audit/BypassSample.php` — must match the updated audit
+- `../../../tests/Fixtures/Audit/BypassSample.php` — must match the updated audit
   patterns (`withoutIsolation` / `system`).
-- `tests/database/migrations/0001_01_01_000002_create_documents_table.php` —
+- `../../../tests/Fixtures/database/migrations/0001_01_01_000002_create_documents_table.php` —
   `scopedBy`→`isolatedBy`.
 
 **Docs:**
