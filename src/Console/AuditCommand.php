@@ -7,6 +7,9 @@ namespace Radiergummi\LaravelRls\Console;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
+use function assert;
+use function is_array;
+
 class AuditCommand extends Command
 {
     protected $signature = 'rls:audit
@@ -18,6 +21,7 @@ class AuditCommand extends Command
     public function handle(): int
     {
         $paths = $this->option('path') ?: [base_path('app')];
+        assert(is_array($paths));
         $pattern = '/(?:Rls::|\$?this->|->)\s*(withoutRls|system)\s*\(/';
 
         $findings = [];
@@ -32,7 +36,7 @@ class AuditCommand extends Command
                     continue;
                 }
 
-                $lines = preg_split('/\R/', File::get($file->getPathname()));
+                $lines = preg_split('/\R/', File::get($file->getPathname())) ?: [];
 
                 foreach ($lines as $number => $line) {
                     if (preg_match($pattern, $line, $matches)) {
@@ -66,7 +70,7 @@ class AuditCommand extends Command
                 sprintf(
                     'Bypass call sites (%s) exceed the threshold of %d.',
                     count($findings),
-                    $threshold,
+                    (int) $threshold,
                 ),
             );
 

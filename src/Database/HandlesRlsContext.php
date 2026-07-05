@@ -11,6 +11,8 @@ use Radiergummi\LaravelRls\Exceptions\MissingContextBoundary;
 use Radiergummi\LaravelRls\Exceptions\MissingTenantContext;
 use Throwable;
 
+use function array_values;
+
 trait HandlesRlsContext
 {
     /**
@@ -151,7 +153,7 @@ trait HandlesRlsContext
     }
 
     /**
-     * @param array<int|string, mixed> $bindings
+     * @param array<int, mixed>                                $bindings
      * @param Closure(string, array<int|string, mixed>): mixed $callback
      *
      * @throws MissingTenantContext
@@ -250,7 +252,7 @@ trait HandlesRlsContext
             $this->inRlsGuard = false;
         }
 
-        return array_map(static fn($row) => $row->name, $rows);
+        return array_values(array_map(static fn($row) => $row->name, $rows));
     }
 
     protected function shouldWrapForRls(): bool

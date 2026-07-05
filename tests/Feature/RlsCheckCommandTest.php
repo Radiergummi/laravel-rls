@@ -6,8 +6,11 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Testing\PendingCommand;
 use PHPUnit\Framework\Attributes\Test;
 use Radiergummi\LaravelRls\Tests\TestCase;
+
+use function assert;
 
 class RlsCheckCommandTest extends TestCase
 {
@@ -23,7 +26,9 @@ class RlsCheckCommandTest extends TestCase
         });
 
         try {
-            $this->artisan('rls:check')->assertExitCode(0);
+            $result = $this->artisan('rls:check');
+            assert($result instanceof PendingCommand);
+            $result->assertExitCode(0);
         } finally {
             Schema::dropIfExists('checked_things');
         }
@@ -41,8 +46,9 @@ class RlsCheckCommandTest extends TestCase
         DB::statement('alter table "orphan_rls" enable row level security');
 
         try {
-            $this
-                ->artisan('rls:check')
+            $result = $this->artisan('rls:check');
+            assert($result instanceof PendingCommand);
+            $result
                 ->expectsOutputToContain('orphan_rls')
                 ->assertExitCode(1);
         } finally {

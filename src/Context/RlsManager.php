@@ -286,7 +286,7 @@ class RlsManager
      * @template T
      * @param null|Closure(): T $callback
      *
-     * @return T
+     * @return T|null
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
