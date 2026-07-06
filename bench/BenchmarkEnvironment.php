@@ -17,6 +17,7 @@ final class BenchmarkEnvironment
      *     uname: string,
      *     emulate_prepares: bool,
      *     pgbouncer: bool,
+     *     toxiproxy: bool,
      *     git_commit: string,
      *     generated_at: string
      * }
@@ -26,6 +27,7 @@ final class BenchmarkEnvironment
         string $gitCommit,
         string $generatedAt,
         bool $pgbouncer,
+        bool $toxiproxy,
         bool $emulatePrepares,
     ): array {
         return [
@@ -34,6 +36,7 @@ final class BenchmarkEnvironment
             'uname' => php_uname(),
             'emulate_prepares' => $emulatePrepares,
             'pgbouncer' => $pgbouncer,
+            'toxiproxy' => $toxiproxy,
             'git_commit' => $gitCommit,
             'generated_at' => $generatedAt,
         ];

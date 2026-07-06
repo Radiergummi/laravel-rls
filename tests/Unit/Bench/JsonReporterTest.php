@@ -29,6 +29,7 @@ class JsonReporterTest extends TestCase
             '2026-07-06T00:00:00Z',
             false,
             false,
+            false,
         );
 
         $document = (new JsonReporter())->render(
@@ -67,6 +68,8 @@ class JsonReporterTest extends TestCase
         );
 
         $this->assertSame('abc123', $document['env']['git_commit']);
+        $this->assertArrayHasKey('toxiproxy', $document['env']);
+        $this->assertFalse($document['env']['toxiproxy']);
         $this->assertSame(PHP_VERSION, $document['env']['php_version']);
         $this->assertSame(2000, $document['params']['iterations']);
         $this->assertSame('point_select', $document['cells'][0]['scenario']);
@@ -88,6 +91,7 @@ class JsonReporterTest extends TestCase
                 'PostgreSQL 18.0',
                 'abc123',
                 '2026-07-06T00:00:00Z',
+                false,
                 false,
                 false,
             ),

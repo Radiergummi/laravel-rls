@@ -125,6 +125,7 @@ $env = BenchmarkEnvironment::describe(
     trim((string) shell_exec('git rev-parse --short HEAD')),
     gmdate('Y-m-d\TH:i:s\Z'),
     pgbouncer: false,
+    toxiproxy: false,
     emulatePrepares: (bool) $db->getPdo()->getAttribute(PDO::ATTR_EMULATE_PREPARES),
 );
 
