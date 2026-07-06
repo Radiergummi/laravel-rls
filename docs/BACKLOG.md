@@ -112,10 +112,12 @@ and *where* it touches the code.
   fluent `IsolatedByDefinition`. With `WITH CHECK`, makes the scope id "impossible
   to get wrong." *Design §9.*
 
-- [x] **`rls.bypass()` semantics per role model, hardened.** Tests confirm the
-  bypass clause is emitted only in `owner` mode (present in owner DSL, absent in
-  restricted) and that a restricted role setting `app.bypass='on'` directly stays
-  confined — the bypass GUC is inert without the clause. *Design §5/§7.*
+- [x] **Bypass semantics hardened, then unified (2026-07-06).** Originally tested
+  the owner-mode `rls.bypass()` clause; **superseded by the bypass unification**
+  (see the resolved P0 item above). The predicate is now equality-only in both
+  models with no in-band clause, so a role setting `app.bypass='on'` directly is
+  inert — confirmed by `RestrictedIsolationTest` and covered end-to-end by
+  `OwnerModeBypassTest`. *Design §5/§7.*
 
 - [~] **Tenancy-package bridges (stancl / spatie).** Docs-only recipe shipped in
   the README ("Using beneath a tenancy package") per the resolved design decision.

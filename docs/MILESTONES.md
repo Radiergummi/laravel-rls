@@ -123,11 +123,18 @@ named for the threat and cross-referenced to the design threat model.
    - Stack integrity: nested `isolateTo` / `withoutIsolation` restore correctly on
      exception, nested exception, and deep nesting.
 
-2. **Bypass abuse:**
-   - Restricted role self-escape via setting the bypass GUC directly (exists — expand
-     to every injection vector).
-   - App SQL reaching the owner-mode bypass clause; empty/omitted bypass reason;
-     bypass context surviving dehydrate into a job.
+2. **Bypass abuse** (model revised 2026-07-06 — bypass is admin-connection-only in
+   both role models; the `rls.bypass()` GUC/clause is gone):
+   - Self-escape attempts via `set_config('app.bypass', …)` from any role — must be
+     **inert** now (no policy reads it); confirm across every injection vector.
+   - The in-flight `RlsManager::isBypassing()` flag must be strictly try/finally-safe:
+     an exception (or nested exception) thrown mid-`system()` must not leave the guard
+     stuck down for the next query on the same worker.
+   - `system()`/`withoutIsolation()` hard-fails closed when `admin_connection` is
+     unset — never silently runs unscoped; empty/omitted bypass reason.
+   - Admin-connection confinement: app SQL inside a `system()` callback runs on the
+     BYPASSRLS connection by design — verify the swap restores on every exit path and
+     that work *outside* the callback never lands on the admin connection.
 
 3. **SQL injection & the raw-SQL boundary:**
    - Malicious isolation-key *values* (SQL payloads) — must stay bound params, never

@@ -253,14 +253,21 @@ undesirable — the owner should move freely during backfills).
 The package **publishes a reviewable migration** for role provisioning (role +
 `GRANT`s + `ALTER DEFAULT PRIVILEGES`) rather than running privileged role DDL itself.
 
-### Bypass mechanism is model-dependent
+### Bypass mechanism is unified across models (revised 2026-07-06)
 
-- **`owner`:** policies emit `USING ( rls.bypass() OR <predicate> )`.
-  `rls.bypass()` reads a transaction-local GUC set only inside `system()`. Safe because the owner is already privileged.
-- **`restricted`:** policies emit `USING ( <predicate> )` only — **no bypass clause**. Any role can
-  `set_config('app.bypass', …)` on a custom GUC, so a GUC bypass would let the restricted role escape its own jail.
-  Bypass is exclusively *route to the admin connection*. `Rls::system()` **hard-fails** if no admin connection is
-  configured — no silent GUC fallback.
+Both role models emit an **equality-only** predicate — `USING ( <predicate> )` — with **no in-band bypass clause**. An
+earlier design gave owner mode an in-band `rls.bypass() OR <predicate>` escape hatch, but the `OR` defeats the
+scoping-column index and forces a **sequential scan** on every scoped read (~30× slower at 100k rows, worse linearly with
+size); in-band bypass under `FORCE` is impossible anyway (`SET LOCAL row_security = off` errors). See the resolved P0 item
+in [`BACKLOG.md`](../../BACKLOG.md).
+
+- Bypass (`Rls::system()` / `withoutIsolation()`) is **exclusively** *route to a privileged `BYPASSRLS` admin
+  connection* — in **both** models. `Rls::system()` **hard-fails** with `AdminConnectionRequired` if no
+  `rls.admin_connection` is configured; there is no GUC fallback.
+- A restricted role that sets `set_config('app.bypass', …)` itself changes nothing — no policy reads that GUC any more, so
+  it is inert and cannot let the role escape its jail.
+- The only remaining owner/restricted difference at the schema level is that owner mode still emits `FORCE ROW LEVEL
+  SECURITY` (so the table owner is itself confined).
 
 ---
 
@@ -283,8 +290,10 @@ semver-stable** — add new functions, never mutate existing signatures.
 ```sql
 rls.context(key text) returns text        -- current_setting('app.' || key, true)
 rls.tenant_id() returns uuid               -- generated from ContextSchema, sugar
-rls.bypass() returns boolean               -- owner-mode only
 ```
+
+`rls.bypass()` was removed (2026-07-06): bypass no longer lives in the read predicate — it routes to an admin
+connection (see §7).
 
 - **Volatility: `STABLE`** (critical). `STABLE` lets the planner evaluate the helper once per statement and drive an
   **index scan** on `tenant_id`. VOLATILE makes the policy predicate non-sargable → sequential scans on every query.
@@ -336,8 +345,8 @@ $table->tenantIsolated();            // only exists because you declared a tenan
    bypasses it — the check still catches it.)
 
 Plumbing: stable auto-names (`<table>_<dimension>_isolation`, overridable) for idempotent `DROP POLICY IF EXISTS` and
-rollback; the macro registers `down()`; output is role-model-aware (FORCE and the `rls.bypass()` clause only in owner
-mode).
+rollback; the macro registers `down()`; the predicate is equality-only in both models — the only role-model-aware
+output is `FORCE ROW LEVEL SECURITY`, emitted in owner mode only.
 
 ---
 
@@ -387,12 +396,13 @@ worker. Package additions:
 1. **Propagate by default, opt out explicitly.** A job inherits the dispatcher's tenant scope (sees only that tenant's
    data) — correct-by-default. System jobs opt out via `Rls::system(...)` in `handle()` or a `#[WithoutRlsContext]` /
    `SystemJob` marker.
-2. **Strip bypass at the dehydrate boundary.** A job dispatched inside a
-   `system()`/bypass scope must **not** carry bypass into the worker. Context's
-   `dehydrating` hook drops bypass/privileged dimensions; privilege must be re-declared in `handle()`.
+2. **Bypass never rides a job payload (by construction, revised 2026-07-06).** Bypass no longer lives on the context
+   stack — it routes to an admin connection for the duration of the `system()` callback (§7). So a job dispatched inside a
+   `system()` scope inherits only the underlying isolation context, never bypass; there is nothing privileged to strip at
+   the dehydrate boundary. Privilege must be re-declared with `Rls::system(...)` in `handle()`.
 3. **Per-job stack reset** (`JobProcessing`) as belt-and-suspenders against leakage on long-lived workers.
-4. **Restricted-mode nuance:** a `system()` job needs the admin connection to bypass, or `system()` hard-fails
-   (consistent with §7).
+4. **Admin-connection nuance:** a `system()` job needs the admin connection to bypass, or `system()` hard-fails — in
+   **both** role models (consistent with §7).
 
 Documented edges: delayed/retried jobs replay the dispatch-time snapshot (may be stale); batches/chains each carry their
 own snapshot.
@@ -620,7 +630,7 @@ $this->assertRlsIsolates(...); $this->assertCannotWriteAcrossTenants(...);
 
 ```sql
 -- generated / helper SQL
-rls.context('tenant_id')     rls.tenant_id()     rls.bypass()
+rls.context('tenant_id')     rls.tenant_id()
 ```
 
 ---
@@ -646,7 +656,7 @@ rls.context('tenant_id')     rls.tenant_id()     rls.bypass()
 | 3  | Boundary policy `wrap` (bounded+observable) / `explicit` / `request`                                                     | Reconciles safety with the "no invisible magic" critique                  |
 | 4  | Fail-loud in app + fail-closed in DB                                                                                     | Defense in depth in both directions                                       |
 | 5  | Role model `owner` (FORCE, default) / `restricted` (admin conn, recommended)                                             | Zero-infra adoption vs real isolation; honestly labeled                   |
-| 6  | Bypass: GUC clause in owner mode, admin-connection in restricted; `system()` hard-fails without admin conn in restricted | Restricted role must not escape its own jail                              |
+| 6  | Bypass: admin-connection in **both** models (equality-only predicate, no in-band clause); `system()` hard-fails without an admin connection | Restricted role must not escape its own jail; owner reads stay index-friendly |
 | 7  | Publish provisioning migration, don't run privileged DDL                                                                 | Reviewable, no surprise infra changes                                     |
 | 8  | Generic named-dimension context; opt-in declared-schema sugar                                                            | Blesses no auth model                                                     |
 | 9  | Build on Laravel `Context` (11+)                                                                                         | Free job propagation + reset                                              |
