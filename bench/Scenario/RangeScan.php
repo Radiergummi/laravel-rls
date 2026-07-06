@@ -40,7 +40,7 @@ final class RangeScan extends Scenario
     public function explainTarget(): ?array
     {
         return [
-            'sql' => 'select * from ' . TableSet::TREATMENT . ' where tenant_id is not null and n between ? and ?',
+            'sql' => 'select * from ' . TableSet::TREATMENT . ' where n between ? and ?',
             'bindings' => [$this->tables->probeRangeLo, $this->tables->probeRangeHi],
             'tenant' => $this->tables->probeTenantId,
         ];
