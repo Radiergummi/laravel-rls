@@ -90,9 +90,9 @@ class RestrictedIsolationTest extends TestCase
     #[TestDox('The restricted role cannot self-escape isolation via the bypass GUC')]
     public function restricted_role_cannot_self_escape_via_bypass_guc(): void
     {
-        // As the restricted role, flip the owner-mode escape hatch directly and
-        // set a tenant. The restricted isolation policy has no bypass clause, so
-        // app.bypass changes nothing: only tenant A's rows remain visible.
+        // As the restricted role, set the (now-retired) app.bypass GUC directly
+        // and a tenant. No policy references app.bypass any more — it is an inert
+        // custom GUC — so only tenant A's rows remain visible.
         DB::transaction(function (): void {
             DB::statement("select set_config('app.bypass', 'on', true)");
             DB::statement("select set_config('app.tenant_id', ?, true)", [$this->a]);

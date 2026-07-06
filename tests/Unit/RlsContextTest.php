@@ -22,7 +22,6 @@ class RlsContextTest extends TestCase
         $this->assertTrue($context->has('tenant_id'));
         $this->assertFalse($context->has('missing'));
         $this->assertNull($context->get('missing'));
-        $this->assertFalse($context->isBypass());
     }
 
     #[Test]
@@ -35,15 +34,5 @@ class RlsContextTest extends TestCase
         $this->assertSame('2', $b->get('tenant_id'));
         $this->assertSame('y', $b->get('x'));
         $this->assertNotSame($a, $b);
-    }
-
-    #[Test]
-    #[TestDox('bypass() creates a bypass context carrying a reason and no isolation values')]
-    public function bypass_context(): void
-    {
-        $context = RlsContext::bypass('nightly-export');
-        $this->assertTrue($context->isBypass());
-        $this->assertSame('nightly-export', $context->reason());
-        $this->assertSame([], $context->values());
     }
 }

@@ -45,24 +45,4 @@ class RlsFunctionsTest extends TestCase
             $this->assertNull(DB::selectOne("select rls.context('tenant_id') as value")->value);
         });
     }
-
-    #[Test]
-    #[TestDox('rls.bypass() defaults to false')]
-    public function bypass_defaults_to_false(): void
-    {
-        $this->assertFalse(DB::selectOne('select rls.bypass() as value')->value);
-    }
-
-    /**
-     * @throws Throwable
-     */
-    #[Test]
-    #[TestDox('rls.bypass() reads the GUC')]
-    public function bypass_reads_guc(): void
-    {
-        DB::transaction(function (): void {
-            DB::statement("select set_config('app.bypass', 'on', true)");
-            $this->assertTrue(DB::selectOne('select rls.bypass() as value')->value);
-        });
-    }
 }

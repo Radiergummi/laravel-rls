@@ -6,9 +6,9 @@ return [
     'prefix' => 'app.',
     'role_model' => 'owner',
 
-    // In restricted mode, Rls::system()/withoutIsolation() route work to this
-    // connection (a privileged owner/BYPASSRLS role). Required in restricted
-    // mode; ignored in owner mode.
+    // Rls::system()/withoutIsolation() route work to this connection (a
+    // privileged BYPASSRLS role). Required for bypass in BOTH role models:
+    // there is no in-band bypass, so without it these calls hard-fail.
     'admin_connection' => null,
 
     'strategy' => 'transaction',

@@ -57,5 +57,10 @@ class FailLoudGuardTest extends TestCase
     {
         parent::defineEnvironment($app);
         config(['rls.on_missing_context' => 'throw']);
+
+        // The bypass test runs a real read inside withoutIsolation(), which now routes to a
+        // privileged admin connection (a BYPASSRLS role). The guard stands down for its duration via
+        // the in-flight bypass flag, so the query must not throw MissingIsolationContext.
+        $this->useBypassAdminConnection($app);
     }
 }

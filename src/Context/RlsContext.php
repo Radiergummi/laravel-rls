@@ -11,8 +11,6 @@ final readonly class RlsContext
      */
     private function __construct(
         private array $values,
-        private bool $bypass = false,
-        private ?string $reason = null,
     ) {}
 
     /**
@@ -21,11 +19,6 @@ final readonly class RlsContext
     public static function make(array $values): self
     {
         return new self($values);
-    }
-
-    public static function bypass(string $reason): self
-    {
-        return new self([], true, $reason);
     }
 
     /**
@@ -54,20 +47,6 @@ final readonly class RlsContext
      */
     public function with(array $values): self
     {
-        return new self(
-            array_merge($this->values, $values),
-            $this->bypass,
-            $this->reason,
-        );
-    }
-
-    public function isBypass(): bool
-    {
-        return $this->bypass;
-    }
-
-    public function reason(): ?string
-    {
-        return $this->reason;
+        return new self(array_merge($this->values, $values));
     }
 }

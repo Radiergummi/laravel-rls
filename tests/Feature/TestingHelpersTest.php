@@ -31,10 +31,15 @@ class TestingHelpersTest extends TestCase
         $a = (string) Str::uuid();
         $b = (string) Str::uuid();
 
-        $this->withoutIsolation('seed', function () use ($a, $b) {
-            DB::table('gadgets')->insert(['id' => Str::uuid(), 'tenant_id' => $a]);
-            DB::table('gadgets')->insert(['id' => Str::uuid(), 'tenant_id' => $b]);
-        });
+        // WITH CHECK permits same-tenant writes, so seed each gadget within its own context.
+        $this->isolateTo(
+            ['tenant_id' => $a],
+            fn() => DB::table('gadgets')->insert(['id' => Str::uuid(), 'tenant_id' => $a]),
+        );
+        $this->isolateTo(
+            ['tenant_id' => $b],
+            fn() => DB::table('gadgets')->insert(['id' => Str::uuid(), 'tenant_id' => $b]),
+        );
 
         $this->isolateTo(['tenant_id' => $a], function () {
             $this->assertSame(1, DB::table('gadgets')->count());

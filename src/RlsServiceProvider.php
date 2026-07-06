@@ -13,7 +13,6 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Application;
 use Illuminate\Log\Context\Repository;
 use Illuminate\Queue\Events\Looping;
-use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Octane\Events\RequestReceived;
@@ -68,10 +67,6 @@ class RlsServiceProvider extends ServiceProvider
 
         RlsSchemaMacros::register();
 
-        Context::dehydrating(
-            static fn(Repository $context) => RlsManager::stripBypassOnDehydrate($context),
-        );
-
         $this->app->get(Dispatcher::class)->listen(
             Authenticated::class,
             fn(Authenticated $event) => $manager->establishFromUser($event->user),
@@ -119,26 +114,28 @@ class RlsServiceProvider extends ServiceProvider
             );
         }
 
-        if (config('rls.role_model') === 'restricted') {
-            $manager->setBypassHandler(function (string $reason, Closure $callback) {
-                $admin = config('rls.admin_connection');
-                assert(is_string($admin) || $admin === null);
+        // Bypass routes to a privileged admin connection (a BYPASSRLS role) in *both* role models:
+        // the isolation predicate is equality-only for index performance, so there is no in-band
+        // bypass to fall back on. The handler is installed unconditionally; it hard-fails when no
+        // admin_connection is configured.
+        $manager->setBypassHandler(function (string $reason, Closure $callback) {
+            $admin = config('rls.admin_connection');
+            assert(is_string($admin) || $admin === null);
 
-                if ($admin === null) {
-                    throw AdminConnectionRequired::forReason($reason);
-                }
+            if ($admin === null) {
+                throw AdminConnectionRequired::forReason($reason);
+            }
 
-                $database = $this->app->make(DatabaseManager::class);
-                $previous = $database->getDefaultConnection();
-                $database->setDefaultConnection($admin);
+            $database = $this->app->make(DatabaseManager::class);
+            $previous = $database->getDefaultConnection();
+            $database->setDefaultConnection($admin);
 
-                try {
-                    return $callback();
-                } finally {
-                    $database->setDefaultConnection($previous);
-                }
-            });
-        }
+            try {
+                return $callback();
+            } finally {
+                $database->setDefaultConnection($previous);
+            }
+        });
     }
 
     /**

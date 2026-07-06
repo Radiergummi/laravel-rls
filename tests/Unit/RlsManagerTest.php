@@ -12,6 +12,7 @@ use PHPUnit\Framework\TestCase;
 use Radiergummi\LaravelRls\Context\ContextSchema;
 use Radiergummi\LaravelRls\Context\RlsManager;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
+use Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use RuntimeException;
 
@@ -102,20 +103,35 @@ class RlsManagerTest extends TestCase
         $this->assertSame('outer', $manager->get('tenant_id'));
     }
 
+    #[Test]
+    #[TestDox('withoutIsolation() hard-fails when no bypass handler is installed')]
+    public function without_rls_requires_a_handler(): void
+    {
+        $manager = $this->manager();
+
+        $this->expectException(AdminConnectionRequired::class);
+
+        $manager->withoutIsolation('seeding', fn() => null);
+    }
+
     /**
-     * @throws InvalidContextValue
      * @throws RuntimeException
      */
     #[Test]
-    #[TestDox('withoutIsolation() establishes a bypass context for its duration')]
-    public function without_rls_is_a_bypass_scope(): void
+    #[TestDox('withoutIsolation() routes to the handler with isBypassing() set for its duration')]
+    public function without_rls_routes_to_the_handler(): void
     {
         $manager = $this->manager();
-        $manager->withoutIsolation('seeding', function () use ($manager) {
-            $this->assertTrue($manager->current()?->isBypass());
-            $this->assertSame('seeding', $manager->current()->reason());
-        });
-        $this->assertFalse($manager->hasContext());
+        $manager->setBypassHandler(static fn(string $reason, callable $callback) => $callback());
+
+        $this->assertFalse($manager->isBypassing());
+
+        // The callback returns what it observed; withoutIsolation() returns mixed, so that
+        // observation propagates out as the return value (and proves the callback was routed).
+        $during = $manager->withoutIsolation('seeding', fn() => $manager->isBypassing());
+
+        $this->assertTrue($during, 'isBypassing() is set for the callback duration');
+        $this->assertFalse($manager->isBypassing(), 'isBypassing() clears after the callback');
     }
 
     /**
@@ -246,6 +262,7 @@ class RlsManagerTest extends TestCase
         );
 
         $manager = new RlsManager(new Repository(new Dispatcher()), $events);
+        $manager->setBypassHandler(static fn(string $reason, callable $callback) => $callback());
         $manager->withoutIsolation('nightly-report', fn() => null);
 
         $this->assertInstanceOf(RlsBypassed::class, $captured);

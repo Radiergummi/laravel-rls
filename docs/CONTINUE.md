@@ -63,12 +63,12 @@ isolation test falsely pass.
 
 ```
 RlsServiceProvider.php        binds manager, registers connection resolver (in boot,
-                              to win the resolver race), Context dehydrate hook,
-                              Authenticated listener, restricted bypass handler, commands
+                              to win the resolver race), Authenticated listener,
+                              bypass handler (admin-connection swap, both role models), commands
 Context/
-  RlsContext.php              immutable value object (values | bypass+reason)
+  RlsContext.php              immutable value object (a pure isolation-key/value bag)
   RlsManager.php              stack (stored in Laravel Context), isolateTo/withoutIsolation/system,
-                              resolver, defineContext + typed __call accessors
+                              in-flight isBypassing() flag, resolver, defineContext + typed __call accessors
   ContextSchema.php           declared isolation keys -> typed SQL helper generation
 Database/
   HandlesRlsContext.php       THE core trait: beginTransaction injection, run() wrap,
@@ -76,7 +76,7 @@ Database/
   RlsPostgresConnection.php   PostgresConnection + trait
 Schema/RlsSchemaMacros.php    isolatedBy / enableRowLevelSecurity / forceRowLevelSecurity
                               (+ rlsRaw grammar macro)
-Support/RlsFunctions.php      rls.context() / rls.bypass() SQL (single source)
+Support/RlsFunctions.php      rls.context() SQL helper (single source)
 Http/RlsRequestTransaction.php   opt-in per-request transaction middleware
 Console/CheckCommand.php      rls:check (CI coverage audit)
 Console/AuditCommand.php      rls:audit (bypass call-site scan)
@@ -93,9 +93,10 @@ context reaches Postgres. If you change one thing, understand that first.
 Each feature has a focused test; reading them is the fastest way to understand
 behavior:
 
-- `TenantIsolationTest` — the headline owner-mode proof (reads/writes/bypass/fail-closed/restrictive)
+- `TenantIsolationTest` — the headline owner-mode proof (reads/writes/fail-closed/restrictive)
+- `OwnerModeBypassTest` — owner + FORCE + equality-only predicate; `system()` routes to the BYPASSRLS admin connection
 - `RestrictedIsolationTest` — two real roles, non-owner confined with FORCE off, `system()` routing
-- `ContextBackingTest` — Laravel Context dehydrate/hydrate + bypass stripping
+- `ContextBackingTest` — Laravel Context dehydrate/hydrate roundtrip
 - `QueuedJobContextTest` — live `queue:work` propagation
 - `TpetryPostgresqlEnhancedInteropTest` — composability with another connection package
 - `ContextInjectionTest`, `FailLoudGuardTest`, `ExplicitBoundaryTest`,

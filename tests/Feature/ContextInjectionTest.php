@@ -46,19 +46,4 @@ class ContextInjectionTest extends TestCase
             ));
         $this->assertNull(DB::selectOne("select rls.context('tenant_id') as value")->value);
     }
-
-    /**
-     * @throws InvalidContextValue
-     * @throws RuntimeException
-     */
-    #[Test]
-    #[TestDox('Bypass scope sets bypass GUC')]
-    public function bypass_scope_sets_bypass_guc(): void
-    {
-        Rls::withoutIsolation(
-            'seeding',
-            fn() => $this->assertTrue(DB::selectOne('select rls.bypass() as value')->value),
-        );
-        $this->assertFalse(DB::selectOne('select rls.bypass() as value')->value);
-    }
 }

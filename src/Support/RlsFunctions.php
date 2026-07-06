@@ -32,16 +32,6 @@ class RlsFunctions
                     select nullif(current_setting('app.' || key, true), '')
                 $$
                 SQL,
-
-            <<<'SQL'
-                create or replace function rls.bypass()
-                returns boolean
-                language sql
-                stable
-                as $$
-                    select coalesce(nullif(current_setting('app.bypass', true), ''), 'off')::boolean
-                $$
-                SQL,
         ];
     }
 }

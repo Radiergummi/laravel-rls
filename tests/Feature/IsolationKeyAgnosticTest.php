@@ -27,10 +27,15 @@ class IsolationKeyAgnosticTest extends TestCase
         $a = (string) Str::uuid();
         $b = (string) Str::uuid();
 
-        $this->withoutIsolation('seed', function () use ($a, $b): void {
-            DB::table('org_things')->insert(['id' => Str::uuid(), 'org_id' => $a]);
-            DB::table('org_things')->insert(['id' => Str::uuid(), 'org_id' => $b]);
-        });
+        // WITH CHECK permits same-key writes, so seed each row within its own context.
+        $this->isolateTo(
+            ['org_id' => $a],
+            fn() => DB::table('org_things')->insert(['id' => Str::uuid(), 'org_id' => $a]),
+        );
+        $this->isolateTo(
+            ['org_id' => $b],
+            fn() => DB::table('org_things')->insert(['id' => Str::uuid(), 'org_id' => $b]),
+        );
 
         $this->assertIsolates(OrgThing::class, isolatedBy: 'org_id', acting: $a, cannotSee: $b);
     }

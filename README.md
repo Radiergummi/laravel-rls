@@ -63,9 +63,9 @@ dimensions are covered too.
 | **Context**        | Immutable, stack-based, generic named dimensions; backed by Laravel `Context`                                                                             |
 | **Injection**      | Transaction-local `set_config()` (bound param), injected at the transaction boundary; mid-transaction re-inject makes it testable under `RefreshDatabase` |
 | **Isolation**      | Reads scoped, writes confined (`WITH CHECK`), fail-closed with no context; RESTRICTIVE isolation policy can't be widened by a permissive feature policy   |
-| **Role models**    | `owner` (FORCE, zero-infra) and `restricted` (non-owner runtime role, real isolation even with FORCE off)                                                 |
-| **Bypass**         | `owner`: GUC escape clause; `restricted`: routes to an admin connection, hard-fails without one                                                           |
-| **Jobs**           | Tenant context rides a real `queue:work` dispatch→worker cycle; bypass is stripped at dehydrate                                                           |
+| **Role models**    | `owner` (FORCE) and `restricted` (non-owner runtime role, real isolation even with FORCE off); both use an equality-only, index-friendly predicate       |
+| **Bypass**         | Both models route `system()`/`withoutIsolation()` to a privileged `BYPASSRLS` admin connection and hard-fail without one — no in-band bypass clause       |
+| **Jobs**           | Tenant context rides a real `queue:work` dispatch→worker cycle                                                                                            |
 | **Auth**           | `Rls::resolveContextUsing()` + `Authenticated` event auto-establishes context                                                                             |
 | **Boundary modes** | `wrap` (default), `explicit` (fail-loud `MissingContextBoundary`), request middleware                                                                     |
 | **Strategies**     | `transaction` (default, pooling-safe) and `session` (perf, direct connections)                                                                            |
@@ -82,7 +82,7 @@ for the full design and threat model.
 |----------------------|-------------------------|------------------------------------------------------------------|
 | `prefix`             | `app.`                  | GUC namespace                                                    |
 | `role_model`         | `owner`                 | `owner` (FORCE) or `restricted` (separate admin connection)      |
-| `admin_connection`   | `null`                  | Privileged connection for bypass in restricted mode              |
+| `admin_connection`   | `null`                  | Privileged `BYPASSRLS` connection for bypass; required in *both* role models |
 | `strategy`           | `transaction`           | `transaction` (pooling-safe) or `session` (perf)                 |
 | `boundary`           | `wrap`                  | `wrap`, `explicit`, or `request`                                 |
 | `on_missing_context` | `closed`                | `closed` (DB zero rows) or `throw` (fail-loud in PHP)            |

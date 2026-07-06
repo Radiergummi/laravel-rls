@@ -7,13 +7,10 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
-use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
-use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\Testing\InteractsWithRls;
 use Radiergummi\LaravelRls\Tests\Fixtures\Models\Document;
 use Radiergummi\LaravelRls\Tests\Fixtures\Models\Tenant;
 use Radiergummi\LaravelRls\Tests\TestCase;
-use RuntimeException;
 
 #[TestDox('Tenant Isolation')]
 class TenantIsolationTest extends TestCase
@@ -77,20 +74,6 @@ class TenantIsolationTest extends TestCase
         $this->assertSame(0, Document::query()->count());
     }
 
-    /**
-     * @throws InvalidContextValue
-     * @throws RuntimeException
-     */
-    #[Test]
-    #[TestDox('withoutIsolation() bypass sees all tenants')]
-    public function bypass_sees_all_tenants(): void
-    {
-        Rls::withoutIsolation(
-            'audit',
-            fn() => $this->assertSame(5, Document::query()->count()),
-        );
-    }
-
     #[Test]
     #[TestDox('The restrictive isolation policy prevents a permissive feature policy from leaking rows')]
     public function restrictive_policy_prevents_permissive_feature_leak(): void
@@ -117,13 +100,19 @@ class TenantIsolationTest extends TestCase
         parent::setUp();
 
         // tenants are not RLS-scoped, so create the registry rows directly (and in setUp's body,
-        // not a closure, so they read as initialized). Only the scoped documents need the bypass.
+        // not a closure, so they read as initialized).
         $this->a = Tenant::factory()->createOne();
         $this->b = Tenant::factory()->createOne();
 
-        $this->withoutIsolation('seed', function () {
-            Document::factory()->count(2)->create(['tenant_id' => $this->a->id]);
-            Document::factory()->count(3)->create(['tenant_id' => $this->b->id]);
-        });
+        // Seed each tenant's documents within that tenant's own context: WITH CHECK permits
+        // same-tenant writes, so no bypass is needed to seed.
+        $this->isolateTo(
+            ['tenant_id' => $this->a->id],
+            fn() => Document::factory()->count(2)->create(['tenant_id' => $this->a->id]),
+        );
+        $this->isolateTo(
+            ['tenant_id' => $this->b->id],
+            fn() => Document::factory()->count(3)->create(['tenant_id' => $this->b->id]),
+        );
     }
 }

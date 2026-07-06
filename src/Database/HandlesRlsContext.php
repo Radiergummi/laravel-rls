@@ -69,9 +69,7 @@ trait HandlesRlsContext
 
         $this->rlsAppliedKeys = [];
 
-        $this->setConfig($prefix . 'bypass', $context?->isBypass() ? 'on' : '', $local);
-
-        if ($context !== null && !$context->isBypass()) {
+        if ($context !== null) {
             foreach ($context->values() as $key => $value) {
                 $this->setConfig($prefix . $key, $this->stringifyGucValue($value), $local);
                 $this->rlsAppliedKeys[] = $key;
@@ -145,8 +143,6 @@ trait HandlesRlsContext
             $this->setConfig($prefix . $key, '', false);
         }
         $this->rlsAppliedKeys = [];
-
-        $this->setConfig($prefix . 'bypass', '', false);
     }
 
     /**
@@ -222,7 +218,9 @@ trait HandlesRlsContext
 
         $manager = app('rls');
 
-        if ($manager->current()?->isBypass()) {
+        // Bypass runs on the admin connection with the in-flight flag set; the guard stands down for
+        // its duration (there is no bypass context on the stack any more).
+        if ($manager->isBypassing()) {
             return;
         }
 

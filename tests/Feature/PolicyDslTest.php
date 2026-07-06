@@ -47,8 +47,8 @@ class PolicyDslTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('The owner-mode isolation predicate includes the bypass clause')]
-    public function owner_mode_isolation_predicate_includes_the_bypass_clause(): void
+    #[TestDox('The owner-mode isolation predicate is equality-only, with no bypass clause')]
+    public function owner_mode_isolation_predicate_is_equality_only(): void
     {
         $policy = DB::selectOne(
             'select qual from pg_policies where tablename = ? and policyname = ?',
@@ -57,7 +57,11 @@ class PolicyDslTest extends TestCase
 
         $this->assertIsObject($policy);
         $this->assertInstanceOf(stdClass::class, $policy);
-        $this->assertStringContainsString('bypass', $policy->qual);
+
+        // Equality-only: index-friendly. The `rls.bypass() OR` clause is gone — it would defeat the
+        // scoping-column index and force a Seq Scan on every read.
+        $this->assertStringContainsString('rls.context', $policy->qual);
+        $this->assertStringNotContainsStringIgnoringCase('bypass', $policy->qual);
     }
 
     protected function setUp(): void

@@ -41,11 +41,12 @@ class RlsSchemaMacros
                 $table = $this->getTable();
                 $key ??= $column;
                 $owner = config('rls.role_model', 'owner') === 'owner';
-                $predicate = sprintf('"%s" = rls.context(\'%s\')::%s', $column, $key, $type);
 
-                if ($owner) {
-                    $predicate = "rls.bypass() or {$predicate}";
-                }
+                // Equality-only predicate: index-friendly (a Bitmap Index Scan on the scoping
+                // column). There is no in-band `rls.bypass() OR` clause — the OR would defeat the
+                // index and force a Seq Scan on every scoped read. Bypass routes to an admin
+                // connection instead, in both role models.
+                $predicate = sprintf('"%s" = rls.context(\'%s\')::%s', $column, $key, $type);
 
                 // One helper for every raw command; keeps the protected-call
                 // exemption in a single place and doubles as the addRaw callback

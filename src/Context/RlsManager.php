@@ -11,11 +11,11 @@ use Illuminate\Log\Context\Repository;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
+use Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Exceptions\RlsContextLeaked;
 use RuntimeException;
 
-use function assert;
 use function config;
 use function is_array;
 
@@ -39,38 +39,17 @@ class RlsManager
 
     private ?ContextSchema $schema = null;
 
+    /**
+     * Set for the duration of a withoutIsolation()/system() callback. Bypass no longer lives on the
+     * context stack (it routes to the admin connection instead), so the fail-loud guard reads this
+     * in-flight flag to recognize it is inside a bypass scope and stand down.
+     */
+    private bool $bypassing = false;
+
     public function __construct(
         private readonly Repository $context,
         private readonly ?Dispatcher $events = null,
     ) {}
-
-    /**
-     * Strip bypass contexts before the context is serialized into a queued job, so a job dispatched
-     * inside a bypass scope never inherits bypass.
-     */
-    public static function stripBypassOnDehydrate(Repository $context): void
-    {
-        /** @var list<RlsContext> $stack */
-        $stack = $context->get(self::KEY, []);
-        assert(is_array($stack));
-
-        if ($stack === []) {
-            return;
-        }
-
-        $filtered = array_values(
-            array_filter(
-                $stack,
-                static fn(RlsContext $context): bool => !$context->isBypass(),
-            ),
-        );
-
-        if ($filtered === []) {
-            $context->forget(self::KEY);
-        } else {
-            $context->add(self::KEY, $filtered);
-        }
-    }
 
     /**
      * Declare the app's isolation keys (opt in sugar).
@@ -230,10 +209,9 @@ class RlsManager
     }
 
     /**
-     * Override how bypass scopes (system()/withoutIsolation()) are handled.
-     *
-     * When unset, bypass pushes a bypass context (owner mode, GUC-driven). In restricted mode the
-     * provider installs a handler that routes the callback to the admin connection instead.
+     * Install how bypass scopes (system()/withoutIsolation()) are handled: the handler runs the
+     * callback against a privileged admin connection. The provider installs it in both role models;
+     * when unset, withoutIsolation() hard-fails with AdminConnectionRequired.
      *
      * @param null|Closure(string, Closure(): mixed): mixed $handler
      */
@@ -355,11 +333,28 @@ class RlsManager
     {
         $this->events?->dispatch(new RlsBypassed($reason));
 
-        if ($this->bypassHandler !== null) {
-            return ($this->bypassHandler)($reason, $callback);
+        // Bypass always routes to a privileged admin connection (a BYPASSRLS role). There is no
+        // in-band bypass: the read predicate is equality-only for index performance, and under FORCE
+        // there is no way to disable RLS within the session. Without a handler (unbooted manager, or
+        // no admin_connection configured) there is nothing to route to — fail loud.
+        if ($this->bypassHandler === null) {
+            throw AdminConnectionRequired::forReason($reason);
         }
 
-        return $this->enter(RlsContext::bypass($reason), $callback);
+        // The in-flight flag's lifetime is exactly the handler call, so own it here — no handler can
+        // get the paired-finally invariant wrong, and the fail-loud guard reads a single writer.
+        $this->bypassing = true;
+
+        try {
+            return ($this->bypassHandler)($reason, $callback);
+        } finally {
+            $this->bypassing = false;
+        }
+    }
+
+    public function isBypassing(): bool
+    {
+        return $this->bypassing;
     }
 
     /**

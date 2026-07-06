@@ -58,4 +58,13 @@ class BypassObservabilityTest extends TestCase
                 || ($context['reason'] ?? null) === 'seeding')
             ->once();
     }
+
+    protected function defineEnvironment($app): void
+    {
+        parent::defineEnvironment($app);
+
+        // Bypass now routes to an admin connection; the callbacks here do no DB work, but
+        // withoutIsolation() still requires a configured admin_connection to run at all.
+        $this->useBypassAdminConnection($app);
+    }
 }
