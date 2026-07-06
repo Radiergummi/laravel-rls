@@ -32,7 +32,8 @@
     "autoload-dev": {
         "psr-4": {
             "Radiergummi\\LaravelRls\\Tests\\": "tests/",
-            "Radiergummi\\LaravelRls\\Tests\\Fixtures\\Database\\Factories\\": "tests/Fixtures/database/factories/"
+            "Radiergummi\\LaravelRls\\Tests\\Fixtures\\Database\\Factories\\": "tests/Fixtures/database/factories/",
+            "Radiergummi\\LaravelRls\\Bench\\": "bench/"
         }
     },
     "extra": {
