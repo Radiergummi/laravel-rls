@@ -25,6 +25,7 @@ final class Runner
         }
 
         $samples = [];
+
         for ($i = 0; $i < $iterations; $i++) {
             $start = hrtime(true);
             $operation($variant);

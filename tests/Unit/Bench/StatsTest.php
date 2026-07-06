@@ -19,6 +19,7 @@ class StatsTest extends TestCase
     {
         // 1_000..10_000 ns => 1..10 us
         $samples = [];
+
         for ($i = 1; $i <= 10; $i++) {
             $samples[] = $i * 1000;
         }

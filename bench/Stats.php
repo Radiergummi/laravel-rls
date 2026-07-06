@@ -22,7 +22,7 @@ use function sqrt;
 final class Stats
 {
     /**
-     * @param list<int|float> $samplesNs nanosecond durations
+     * @param list<float|int> $samplesNs nanosecond durations
      *
      * @return array{n:int,mean_us:float,stddev_us:float,min_us:float,max_us:float,p50_us:float,p90_us:float,p95_us:float,p98_us:float,p99_us:float}
      */
@@ -39,6 +39,7 @@ final class Stats
         $mean = array_sum($us) / $n;
 
         $variance = 0.0;
+
         foreach ($us as $v) {
             $variance += ($v - $mean) ** 2;
         }

@@ -37,6 +37,7 @@ final class Schema
         // rls.context(), and Boot doesn't run migrations, so the helper schema/function
         // must be installed before creating that table on a fresh database.
         $owner = $this->app->make('db')->connection();
+
         foreach (RlsFunctions::statements() as $sql) {
             $owner->statement($sql);
         }
@@ -90,6 +91,7 @@ final class Schema
         $admin = $this->app->make('db')->connection('pgsql_admin');
 
         $records = [];
+
         for ($i = 0; $i < $rows; $i++) {
             $records[] = [
                 'id' => $this->rowId($i),

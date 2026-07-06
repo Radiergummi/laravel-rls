@@ -25,6 +25,7 @@ final class MarkdownReporter
 
         /** @var list<array<string,mixed>> $cells */
         $cells = $document['cells'] ?? [];
+
         foreach ($cells as $cell) {
             $lines[] = sprintf(
                 '| %s | %s | %s | %s | %s |',
@@ -101,7 +102,7 @@ final class MarkdownReporter
     /**
      * @param list<array<string,mixed>> $cells
      *
-     * @return array<string,mixed>|null
+     * @return null|array<string,mixed>
      */
     private function findCell(array $cells, ?string $scale, string $variant): ?array
     {

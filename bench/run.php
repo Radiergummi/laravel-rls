@@ -1,0 +1,132 @@
+<?php
+
+declare(strict_types=1);
+
+use Radiergummi\LaravelRls\Bench\Boot;
+use Radiergummi\LaravelRls\Bench\Env;
+use Radiergummi\LaravelRls\Bench\ExplainProbe;
+use Radiergummi\LaravelRls\Bench\Report\JsonReporter;
+use Radiergummi\LaravelRls\Bench\Report\MarkdownReporter;
+use Radiergummi\LaravelRls\Bench\Runner;
+use Radiergummi\LaravelRls\Bench\Scenario\Aggregate;
+use Radiergummi\LaravelRls\Bench\Scenario\Insert;
+use Radiergummi\LaravelRls\Bench\Scenario\PointSelect;
+use Radiergummi\LaravelRls\Bench\Scenario\RangeScan;
+use Radiergummi\LaravelRls\Bench\Schema;
+use Radiergummi\LaravelRls\Bench\Stats;
+use Radiergummi\LaravelRls\Bench\TableSet;
+use Radiergummi\LaravelRls\Bench\Variant;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$opts = getopt('', ['scale::', 'iterations::', 'warmup::', 'json::', 'md::']);
+$scales = explode(',', $opts['scale'] ?? '1k,100k');
+$iterations = (int) ($opts['iterations'] ?? 2000);
+$warmup = (int) ($opts['warmup'] ?? 200);
+$jsonPath = $opts['json'] ?? __DIR__ . '/baseline.json';
+$mdPath = $opts['md'] ?? null;
+
+$app = Boot::app();
+$schema = new Schema($app);
+$runner = new Runner();
+$db = $app->make('db')->connection();
+$rls = $app->make('rls');
+
+$cells = [];
+$explain = [];
+$amortization = [];
+
+foreach ($scales as $scale) {
+    $tables = $schema->seed($scale);
+
+    $scenarios = [
+        new PointSelect($app, $tables),
+        new RangeScan($app, $tables),
+        new Aggregate($app, $tables),
+        new Insert($app, $tables),
+    ];
+
+    foreach ($scenarios as $scenario) {
+        foreach (Variant::cases() as $variant) {
+            $samples = $runner->measure(
+                static fn(Variant $v) => $scenario->run($v),
+                $variant,
+                $warmup,
+                $iterations,
+            );
+            $cells[] = [
+                'scenario' => $scenario->name(),
+                'variant' => $variant->value,
+                'scale' => $scale,
+                ...Stats::summarize($samples),
+            ];
+        }
+
+        $target = $scenario->explainTarget();
+
+        if ($target !== null) {
+            $probe = $rls->isolateTo(
+                ['tenant_id' => $target['tenant']],
+                static fn() => ExplainProbe::probe($db, $target['sql'], $target['bindings']),
+            );
+            $explain[] = ['scenario' => $scenario->name(), 'scale' => $scale, ...$probe];
+        }
+    }
+
+    // Amortization probe: fixed per-transaction set_config cost = single-query txn - per-query
+    // cost inside a 10-query txn. Uses the point-select treatment read.
+    $point = new PointSelect($app, $tables);
+    $one = Stats::summarize($runner->measure(
+        static fn(Variant $v) => $point->run($v),
+        Variant::Treatment,
+        $warmup,
+        $iterations,
+    ))['mean_us'];
+    $tenPerTxn = Stats::summarize($runner->measure(
+        static function (Variant $v) use ($rls, $db, $tables): void {
+            $rls->isolateTo(['tenant_id' => $tables->probeTenantId], static function () use ($db, $tables): void {
+                $db->transaction(static function () use ($db, $tables): void {
+                    for ($q = 0; $q < 10; $q++) {
+                        $db->select('select * from ' . TableSet::TREATMENT . ' where id = ?', [$tables->probeRowId]);
+                    }
+                });
+            });
+        },
+        Variant::Treatment,
+        $warmup,
+        $iterations,
+    ))['mean_us'] / 10.0;
+    $amortization[] = [
+        'scale' => $scale,
+        'per_txn_1_query_us' => $one,
+        'per_txn_10_query_us' => $tenPerTxn,
+        'derived_fixed_setconfig_us' => max(0.0, $one - $tenPerTxn),
+    ];
+
+    $schema->drop();
+}
+
+$env = Env::describe(
+    (string) $db->selectOne('select version() as v')->v,
+    trim((string) shell_exec('git rev-parse --short HEAD')),
+    gmdate('Y-m-d\TH:i:s\Z'),
+    pgbouncer: false,
+    emulatePrepares: (bool) $db->getPdo()->getAttribute(PDO::ATTR_EMULATE_PREPARES),
+);
+
+$json = new JsonReporter();
+$document = $json->render(
+    $env,
+    ['iterations' => $iterations, 'warmup' => $warmup, 'scales' => $scales],
+    $cells,
+    $amortization,
+    $explain,
+);
+$json->write($jsonPath, $document);
+
+$markdown = (new MarkdownReporter())->render($document);
+
+if ($mdPath !== null) {
+    file_put_contents($mdPath, $markdown);
+}
+echo $markdown;

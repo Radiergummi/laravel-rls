@@ -71,6 +71,7 @@ final class ExplainProbe
 
         foreach (self::children($node) as $child) {
             $found = self::firstScan($child);
+
             if ($found !== 'Unknown') {
                 return $found;
             }

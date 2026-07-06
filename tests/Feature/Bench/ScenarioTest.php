@@ -36,6 +36,7 @@ class ScenarioTest extends TestCase
 
             foreach ([PointSelect::class, RangeScan::class, Aggregate::class, Insert::class] as $class) {
                 $scenario = new $class($app, $tables);
+
                 foreach (Variant::cases() as $variant) {
                     // Must not throw for any variant.
                     $scenario->run($variant);
