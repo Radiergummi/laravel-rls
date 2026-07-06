@@ -30,7 +30,7 @@ class InstallCommandTest extends TestCase
     #[TestDox('The provider stub scaffolds defineContext() and resolveContextUsing()')]
     public function provider_stub_scaffolds_context_and_resolver(): void
     {
-        $stub = file_get_contents(__DIR__ . '/../../stubs/rls-provider.stub') ?: '';
+        $stub = file_get_contents(__DIR__ . '/../../stubs/rls-provider.php.stub') ?: '';
 
         $this->assertStringContainsString('defineContext', $stub);
         $this->assertStringContainsString('resolveContextUsing', $stub);

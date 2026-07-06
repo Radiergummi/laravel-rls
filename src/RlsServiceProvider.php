@@ -222,7 +222,7 @@ class RlsServiceProvider extends ServiceProvider
             ], 'rls-migrations');
 
             $this->publishes([
-                __DIR__ . '/../stubs/rls-provider.stub' => app_path('Providers/RlsServiceProvider.php'),
+                __DIR__ . '/../stubs/rls-provider.php.stub' => app_path('Providers/RlsServiceProvider.php'),
             ], 'rls-provider');
         }
     }

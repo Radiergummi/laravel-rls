@@ -1,14 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
+use App\Models\User;
 use Illuminate\Support\ServiceProvider;
 use Radiergummi\LaravelRls\Context\ContextSchema;
 use Radiergummi\LaravelRls\Facades\Rls;
 
 /**
- * The single app-side home for your RLS configuration. Register this in
- * bootstrap/providers.php.
+ * The single app-side home for your RLS configuration.
  */
 class RlsServiceProvider extends ServiceProvider
 {
@@ -17,13 +19,13 @@ class RlsServiceProvider extends ServiceProvider
         // Declare your isolation keys. Enables typed accessors
         // (Rls::tenantId()), typed SQL helpers (rls.tenant_id()), and value
         // validation before context reaches the database.
-        Rls::defineContext(function (ContextSchema $schema) {
+        Rls::defineContext(static function (ContextSchema $schema) {
             $schema->uuid('tenant_id');
         });
 
         // Map the authenticated identity to context values. Called whenever a
         // user is authenticated. Return an array of isolation key => value.
-        Rls::resolveContextUsing(fn ($user) => [
+        Rls::resolveContextUsing(static fn(User $user) => [
             'tenant_id' => $user->tenant_id,
         ]);
     }
