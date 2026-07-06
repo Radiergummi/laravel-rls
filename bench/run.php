@@ -149,12 +149,9 @@ try {
 $endpoints = [];
 
 foreach (EndpointConfig::matrix() as $cfg) {
-    // Omit cells whose backend isn't up (PgBouncer configs when :6432 is unreachable).
-    if ($cfg->connectionName === 'pgsql_pgbouncer' && ! $pgbouncerAvailable) {
-        continue;
-    }
-
-    // Config 6: unsafe by construction — flag, never measure single-client.
+    // Config 6: unsafe by construction — flag, never measure single-client. Emitted before the
+    // backend-availability check below: it is a static flag that needs no live connection, so it
+    // must render even when PgBouncer is down (otherwise the informational row silently vanishes).
     if ($cfg->unsafe) {
         $endpoints[] = [
             'label' => $cfg->label,
@@ -166,6 +163,11 @@ foreach (EndpointConfig::matrix() as $cfg) {
             'note' => 'session GUC does not survive PgBouncer transaction pooling',
         ];
 
+        continue;
+    }
+
+    // Omit measured cells whose backend isn't up (PgBouncer configs when :6432 is unreachable).
+    if ($cfg->connectionName === 'pgsql_pgbouncer' && ! $pgbouncerAvailable) {
         continue;
     }
 

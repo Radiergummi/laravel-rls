@@ -57,13 +57,14 @@ final class MarkdownReporter
             }
 
             $lines[] = sprintf(
-                '| %s | %s | ok | %s | %s | %s | %s |',
+                '| %s | %s | %s | %s | %s | %s | %s |',
                 $endpoint['label'],
                 $endpoint['k'],
-                number_format((float) $endpoint['control_us'], 2),
-                number_format((float) $endpoint['treatment_us'], 2),
-                number_format((float) $endpoint['overhead_endpoint_us'], 2),
-                number_format((float) $endpoint['overhead_per_query_us'], 2),
+                $endpoint['status'] ?? '',
+                number_format((float) ($endpoint['control_us'] ?? 0), 2),
+                number_format((float) ($endpoint['treatment_us'] ?? 0), 2),
+                number_format((float) ($endpoint['overhead_endpoint_us'] ?? 0), 2),
+                number_format((float) ($endpoint['overhead_per_query_us'] ?? 0), 2),
             );
         }
 

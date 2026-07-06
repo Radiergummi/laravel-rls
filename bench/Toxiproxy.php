@@ -28,20 +28,25 @@ final class Toxiproxy
 
     public function reset(string $name, string $listen, string $upstream): void
     {
+        // Idempotent: drop any existing proxy (a 404 when absent is expected and fine), then
+        // create it. The create must succeed — throw so a broken admin API surfaces instead of a
+        // silent no-op that would let the sweep run with no proxy and report meaningless numbers.
         Http::delete("{$this->admin}/proxies/{$name}");
         Http::post("{$this->admin}/proxies", [
             'name' => $name,
             'listen' => $listen,
             'upstream' => $upstream,
             'enabled' => true,
-        ]);
+        ])->throw();
     }
 
     public function setLatency(string $name, int $ms, int $jitterMs): void
     {
-        // Idempotent: drop any existing latency toxic, then (re)create it with the new attributes.
+        // Idempotent: drop any existing latency toxic (404 when absent is fine), then (re)create it
+        // with the new attributes. The create must succeed — throw so a failed injection surfaces
+        // rather than silently measuring zero injected latency.
         Http::delete("{$this->admin}/proxies/{$name}/toxics/" . self::TOXIC);
-        Http::post("{$this->admin}/proxies/{$name}/toxics", $this->payload($ms, $jitterMs));
+        Http::post("{$this->admin}/proxies/{$name}/toxics", $this->payload($ms, $jitterMs))->throw();
     }
 
     public function clear(string $name): void

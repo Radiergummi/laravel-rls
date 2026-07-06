@@ -42,6 +42,9 @@
             "providers": ["Radiergummi\\LaravelRls\\RlsServiceProvider"]
         }
     },
+    "config": {
+        "process-timeout": 0
+    },
     "minimum-stability": "stable",
     "prefer-stable": true
 }
