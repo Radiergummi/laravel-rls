@@ -22,19 +22,25 @@ final class JsonReporter
      * @template TCell of list<array<string, mixed>>
      * @template TAmortization of list<array<string, mixed>>
      * @template TExplain of list<array<string, mixed>>
+     * @template TEndpoints of list<array<string, mixed>>
+     * @template TLatencySweep of list<array<string, mixed>>
      *
      * @param TEnv          $env
      * @param TParams       $params
      * @param TCell         $cells
      * @param TAmortization $amortization
      * @param TExplain      $explain
+     * @param TEndpoints    $endpoints
+     * @param TLatencySweep $latencySweep
      *
      * @return array{
      *     env: TEnv,
      *     params: TParams,
      *     cells: TCell,
      *     amortization: TAmortization,
-     *     explain: TExplain
+     *     explain: TExplain,
+     *     endpoints: TEndpoints,
+     *     latency_sweep: TLatencySweep
      * }
      */
     public function render(
@@ -43,6 +49,8 @@ final class JsonReporter
         array $cells,
         array $amortization,
         array $explain,
+        array $endpoints,
+        array $latencySweep,
     ): array {
         return [
             'env' => $env,
@@ -50,6 +58,8 @@ final class JsonReporter
             'cells' => $cells,
             'amortization' => $amortization,
             'explain' => $explain,
+            'endpoints' => $endpoints,
+            'latency_sweep' => $latencySweep,
         ];
     }
 

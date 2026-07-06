@@ -65,6 +65,20 @@ class JsonReporterTest extends TestCase
                     'exec_ms' => 0.7,
                 ],
             ],
+            [
+                [
+                    'label' => 'direct·transaction·wrap', 'connection' => 'pgsql',
+                    'strategy' => 'transaction', 'boundary' => 'wrap', 'k' => 10, 'status' => 'ok',
+                    'control_us' => 10.0, 'treatment_us' => 14.0,
+                    'overhead_endpoint_us' => 4.0, 'overhead_per_query_us' => 0.4,
+                ],
+            ],
+            [
+                [
+                    'label' => 'direct·transaction·wrap', 'k' => 10, 'injected_ms' => 5, 'jitter_ms' => 1,
+                    'control_us' => 50.0, 'treatment_us' => 90.0, 'overhead_endpoint_us' => 40.0,
+                ],
+            ],
         );
 
         $this->assertSame('abc123', $document['env']['git_commit']);
@@ -75,6 +89,8 @@ class JsonReporterTest extends TestCase
         $this->assertSame('point_select', $document['cells'][0]['scenario']);
         $this->assertSame('Bitmap Heap Scan', $document['explain'][0]['scan_type']);
         $this->assertSame(35.5, $document['amortization'][0]['derived_fixed_setconfig_us']);
+        $this->assertSame('ok', $document['endpoints'][0]['status']);
+        $this->assertSame(40.0, $document['latency_sweep'][0]['overhead_endpoint_us']);
     }
 
     /**
@@ -96,6 +112,8 @@ class JsonReporterTest extends TestCase
                 false,
             ),
             ['iterations' => 5, 'warmup' => 2, 'scales' => ['1k']],
+            [],
+            [],
             [],
             [],
             [],
