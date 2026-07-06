@@ -13,6 +13,7 @@ use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Support\RlsFunctions;
+use Radiergummi\LaravelRls\Tests\WithTestingUtils;
 use RuntimeException;
 use Throwable;
 
@@ -25,6 +26,8 @@ use Throwable;
 #[TestDox('Restricted Isolation')]
 class RestrictedIsolationTest extends TestCase
 {
+    use WithTestingUtils;
+
     private string $a = '11111111-1111-1111-1111-111111111111';
     private string $b = '22222222-2222-2222-2222-222222222222';
 
@@ -36,8 +39,11 @@ class RestrictedIsolationTest extends TestCase
     #[TestDox('The non-owner is confined even though FORCE row security is off')]
     public function force_is_off_yet_the_non_owner_is_confined(): void
     {
-        $forced = DB::connection('pgsql_admin')
-            ->selectOne("select relforcerowsecurity as value from pg_class where relname = 'things'")->value;
+        $forced = $this->selectSingleValueFromDatabase(
+            "select relforcerowsecurity as value from pg_class where relname = 'things'",
+            connectionName: 'pgsql_admin',
+        );
+
         $this->assertFalse((bool) $forced, 'sanity: FORCE is off');
 
         Rls::isolateTo(
@@ -72,6 +78,10 @@ class RestrictedIsolationTest extends TestCase
         );
     }
 
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
     #[Test]
     #[TestDox('system() hard fails without a configured admin connection')]
     public function system_hard_fails_without_an_admin_connection(): void
@@ -80,7 +90,7 @@ class RestrictedIsolationTest extends TestCase
 
         $this->expectException(AdminConnectionRequired::class);
 
-        Rls::system('audit', fn() => null);
+        Rls::system('audit', static fn() => null);
     }
 
     /**
@@ -90,9 +100,9 @@ class RestrictedIsolationTest extends TestCase
     #[TestDox('The restricted role cannot self-escape isolation via the bypass GUC')]
     public function restricted_role_cannot_self_escape_via_bypass_guc(): void
     {
-        // As the restricted role, set the (now-retired) app.bypass GUC directly
-        // and a tenant. No policy references app.bypass any more — it is an inert
-        // custom GUC — so only tenant A's rows remain visible.
+        // As the restricted role, set the (now-retired) app.bypass GUC directly and a tenant.
+        // No policy references app.bypass anymore — it is an inert custom GUC — so only tenant A's
+        // rows remain visible.
         DB::transaction(function (): void {
             DB::statement("select set_config('app.bypass', 'on', true)");
             DB::statement("select set_config('app.tenant_id', ?, true)", [$this->a]);
@@ -112,7 +122,7 @@ class RestrictedIsolationTest extends TestCase
 
     protected function defineEnvironment($app): void
     {
-        $conn = fn(string $user)
+        $connection = static fn(string $user): array
             => [
                 'driver' => 'pgsql',
                 'host' => '127.0.0.1',
@@ -126,8 +136,8 @@ class RestrictedIsolationTest extends TestCase
             ];
 
         config(['database.default' => 'pgsql']);
-        config(['database.connections.pgsql' => $conn('rls_restricted')]);
-        config(['database.connections.pgsql_admin' => $conn('rls_app')]);
+        config(['database.connections.pgsql' => $connection('rls_restricted')]);
+        config(['database.connections.pgsql_admin' => $connection('rls_app')]);
         config(['rls.role_model' => 'restricted']);
         config(['rls.admin_connection' => 'pgsql_admin']);
     }

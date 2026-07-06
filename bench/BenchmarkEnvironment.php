@@ -6,10 +6,20 @@ namespace Radiergummi\LaravelRls\Bench;
 
 use function php_uname;
 
-final class Env
+use const PHP_VERSION;
+
+final class BenchmarkEnvironment
 {
     /**
-     * @return array{pg_version:string,php_version:string,uname:string,emulate_prepares:bool,pgbouncer:bool,git_commit:string,generated_at:string}
+     * @return array{
+     *     pg_version: string,
+     *     php_version: string,
+     *     uname: string,
+     *     emulate_prepares: bool,
+     *     pgbouncer: bool,
+     *     git_commit: string,
+     *     generated_at: string
+     * }
      */
     public static function describe(
         string $pgVersion,

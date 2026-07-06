@@ -13,6 +13,7 @@ use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Support\RlsFunctions;
+use Radiergummi\LaravelRls\Tests\WithTestingUtils;
 use RuntimeException;
 use Throwable;
 
@@ -28,6 +29,8 @@ use Throwable;
 #[TestDox('PgBouncer')]
 class PgBouncerTest extends TestCase
 {
+    use WithTestingUtils;
+
     /**
      * @throws InvalidContextValue
      * @throws RuntimeException
@@ -42,7 +45,7 @@ class PgBouncerTest extends TestCase
         DB::transaction(fn()
             => $this->assertSame(
                 'bouncer-tenant',
-                DB::selectOne("select rls.context('tenant_id') as value")->value,
+                $this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"),
             ));
     }
 
@@ -59,7 +62,7 @@ class PgBouncerTest extends TestCase
         DB::transaction(fn()
             => $this->assertSame(
                 'first',
-                DB::selectOne("select rls.context('tenant_id') as value")->value,
+                $this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"),
             ));
         Rls::forget();
 
@@ -67,7 +70,7 @@ class PgBouncerTest extends TestCase
         DB::transaction(fn()
             => $this->assertSame(
                 'second',
-                DB::selectOne("select rls.context('tenant_id') as value")->value,
+                $this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"),
             ));
     }
 
@@ -85,14 +88,14 @@ class PgBouncerTest extends TestCase
         DB::transaction(fn()
             => $this->assertSame(
                 'ephemeral',
-                DB::selectOne("select rls.context('tenant_id') as value")->value,
+                $this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"),
             ));
 
         // With context no longer active, a bare query must not observe the prior transaction's
         // local GUC on whatever pooled connection it lands on — transaction-local settings reset
         // at COMMIT.
         Rls::forget();
-        $this->assertNull(DB::selectOne("select rls.context('tenant_id') as value")->value);
+        $this->assertNull($this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"));
     }
 
     protected function getPackageProviders($app): array
@@ -103,21 +106,23 @@ class PgBouncerTest extends TestCase
     protected function defineEnvironment($app): void
     {
         config(['database.default' => 'pgsql']);
-        config(['database.connections.pgsql' => [
-            'driver' => 'pgsql',
-            'host' => '127.0.0.1',
-            'port' => 6432,
-            'database' => 'rls_test',
-            'username' => 'rls_app',
-            'password' => 'secret',
-            'charset' => 'utf8',
-            'search_path' => 'public',
-            'sslmode' => 'disable',
-            // Transaction pooling cannot carry server-side prepared statements across the pool;
-            // emulate them client-side. (Alternatively PgBouncer >= 1.21 with
-            // max_prepared_statements set.)
-            'options' => [PDO::ATTR_EMULATE_PREPARES => true],
-        ]]);
+        config([
+            'database.connections.pgsql' => [
+                'driver' => 'pgsql',
+                'host' => '127.0.0.1',
+                'port' => 6432,
+                'database' => 'rls_test',
+                'username' => 'rls_app',
+                'password' => 'secret',
+                'charset' => 'utf8',
+                'search_path' => 'public',
+                'sslmode' => 'disable',
+                // Transaction pooling cannot carry server-side prepared statements across the pool;
+                // emulate them client-side. (Alternatively PgBouncer >= 1.21 with
+                // max_prepared_statements set.)
+                'options' => [PDO::ATTR_EMULATE_PREPARES => true],
+            ],
+        ]);
     }
 
     protected function setUp(): void

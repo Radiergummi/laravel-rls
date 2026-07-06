@@ -1,21 +1,35 @@
 # Performance Harness Implementation Plan (Milestone A v1)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:
+> executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A dev-only benchmark harness that measures the RLS library's per-query cost (floor / control / treatment) with proper percentile statistics + `EXPLAIN` evidence, emitting a committed `bench/baseline.json` and a README-citable headline.
+**Goal:** A dev-only benchmark harness that measures the RLS library's per-query cost (floor / control / treatment) with
+proper percentile statistics + `EXPLAIN` evidence, emitting a committed `bench/baseline.json` and a README-citable
+headline.
 
-**Architecture:** Small, single-purpose PHP units under a non-shipped `bench/` tree (`autoload-dev` only). A one-time Testbench boot registers the real `RlsServiceProvider`; a `Runner` times `Scenario` operations across three variants via `hrtime(true)`; a pure `Stats` unit computes percentiles; an `ExplainProbe` captures DB-side plans; `JsonReporter`/`MarkdownReporter` emit results. Entry point `composer bench`.
+**Architecture:** Small, single-purpose PHP units under a non-shipped `bench/` tree (`autoload-dev` only). A one-time
+Testbench boot registers the real `RlsServiceProvider`; a `Runner` times `Scenario` operations across three variants via
+`hrtime(true)`; a pure `Stats` unit computes percentiles; an `ExplainProbe` captures DB-side plans; `JsonReporter`/
+`MarkdownReporter` emit results. Entry point `composer bench`.
 
-**Tech Stack:** PHP 8.2+, Illuminate DB/Query Builder, Orchestra Testbench (dev), PHPUnit 11, PostgreSQL 18. Full design: [`../specs/2026-07-06-perf-harness-design.md`](../specs/2026-07-06-perf-harness-design.md).
+**Tech Stack:** PHP 8.2+, Illuminate DB/Query Builder, Orchestra Testbench (dev), PHPUnit 11, PostgreSQL 18. Full
+design: [`../specs/2026-07-06-perf-harness-design.md`](../specs/2026-07-06-perf-harness-design.md).
 
 ## Global Constraints
 
-- **Namespace:** harness code `Radiergummi\LaravelRls\Bench\` → `bench/`, registered ONLY under `autoload-dev` (never shipped in the published package). Tests `Radiergummi\LaravelRls\Tests\` → `tests/`. Copy verbatim.
-- **Dev-only:** no changes to `src/`. No user-facing `rls:bench` command. Nothing added to the package's `autoload` (production) section.
-- **DB identity:** the harness connects as owner `rls_app` (default `pgsql`) and seeds/bypasses via `rls_bypass` (`pgsql_admin`, `BYPASSRLS`). Both roles already exist (`tests/bin/setup-db.sh`). Postgres reachable at `127.0.0.1:5432`, db `rls_test`, password `secret`.
-- **Scope (v1):** single worker; scales `1k` + `100k`; `transaction` strategy; `wrap` boundary; direct connection; single isolation key; warm cache. No concurrency, 10M, session/explicit/request, PgBouncer, compound policies, or pgbench.
+- **Namespace:** harness code `Radiergummi\LaravelRls\Bench\` → `bench/`, registered ONLY under `autoload-dev` (never
+  shipped in the published package). Tests `Radiergummi\LaravelRls\Tests\` → `tests/`. Copy verbatim.
+- **Dev-only:** no changes to `src/`. No user-facing `rls:bench` command. Nothing added to the package's `autoload`
+  (production) section.
+- **DB identity:** the harness connects as owner `rls_app` (default `pgsql`) and seeds/bypasses via `rls_bypass`
+  (`pgsql_admin`, `BYPASSRLS`). Both roles already exist (`tests/bin/setup-db.sh`). Postgres reachable at
+  `127.0.0.1:5432`, db `rls_test`, password `secret`.
+- **Scope (v1):** single worker; scales `1k` + `100k`; `transaction` strategy; `wrap` boundary; direct connection;
+  single isolation key; warm cache. No concurrency, 10M, session/explicit/request, PgBouncer, compound policies, or
+  pgbench.
 - **Units:** samples collected in nanoseconds; all reported figures in microseconds.
-- **Commit style:** conventional commits (`feat:`, `test:`, `chore:`, `docs:`). Commit after each task. End commit messages with:
+- **Commit style:** conventional commits (`feat:`, `test:`, `chore:`, `docs:`). Commit after each task. End commit
+  messages with:
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
 
 ---
@@ -49,23 +63,31 @@ tests/Feature/Bench/ScenarioTest.php                                            
 tests/Feature/Bench/BenchSmokeTest.php                                                         (Task 8)
 ```
 
-Tasks 1–4 are pure/in-process (no app, no DB). Tasks 5–7 boot a real app + DB and MUST run in a separate PHPUnit process (attributes shown) to avoid facade/container clashes with the Testbench-based suite. Task 8 drives the CLI as a subprocess.
+Tasks 1–4 are pure/in-process (no app, no DB). Tasks 5–7 boot a real app + DB and MUST run in a separate PHPUnit process
+(attributes shown) to avoid facade/container clashes with the Testbench-based suite. Task 8 drives the CLI as a
+subprocess.
 
 ---
 
 ### Task 1: Bench namespace, Variant enum, and Stats
 
 **Files:**
+
 - Modify: `composer.json` (add `autoload-dev` PSR-4 entry for `Bench\`)
 - Create: `bench/Variant.php`, `bench/Stats.php`
 - Test: `tests/Unit/Bench/StatsTest.php`
 
 **Interfaces:**
-- Produces: `Radiergummi\LaravelRls\Bench\Variant` (enum: `Floor`, `Control`, `Treatment`, backed by lowercase string values). `Radiergummi\LaravelRls\Bench\Stats::summarize(array $samplesNs): array` returning `array{n:int, mean_us:float, stddev_us:float, min_us:float, max_us:float, p50_us:float, p90_us:float, p95_us:float, p98_us:float, p99_us:float}`; throws `InvalidArgumentException` on empty input. Percentiles use nearest-rank on ascending-sorted samples.
+
+- Produces: `Radiergummi\LaravelRls\Bench\Variant` (enum: `Floor`, `Control`, `Treatment`, backed by lowercase string
+  values). `Radiergummi\LaravelRls\Bench\Stats::summarize(array $samplesNs): array` returning
+  `array{n:int, mean_us:float, stddev_us:float, min_us:float, max_us:float, p50_us:float, p90_us:float, p95_us:float, p98_us:float, p99_us:float}`;
+  throws `InvalidArgumentException` on empty input. Percentiles use nearest-rank on ascending-sorted samples.
 
 - [ ] **Step 1: Register the Bench namespace under autoload-dev**
 
-In `composer.json`, extend the existing `autoload-dev.psr-4` block (which already maps `Radiergummi\\LaravelRls\\Tests\\` and the factories namespace) to add:
+In `composer.json`, extend the existing `autoload-dev.psr-4` block (which already maps
+`Radiergummi\\LaravelRls\\Tests\\` and the factories namespace) to add:
 
 ```json
 "Radiergummi\\LaravelRls\\Bench\\": "bench/"
@@ -270,12 +292,19 @@ git commit -m "feat: bench namespace, Variant enum, and pure Stats summariser"
 ### Task 2: ExplainProbe (plan parser + live EXPLAIN)
 
 **Files:**
+
 - Create: `bench/ExplainProbe.php`
 - Test: `tests/Unit/Bench/ExplainProbeTest.php`
 
 **Interfaces:**
+
 - Consumes: `Illuminate\Database\Connection` (for the live path only).
-- Produces: `ExplainProbe::parse(array $explain): array` returning `array{scan_type:string, parallel:bool, exec_ms:float}` from a decoded `EXPLAIN ... FORMAT JSON` element (the `array{Plan:..., 'Execution Time'?:float}` shape). `scan_type` is the first node type containing `"Scan"` found top-down (`"Unknown"` if none). `parallel` is true if any node is `Parallel Aware` or a `Gather*` node. `ExplainProbe::probe(Connection, string $sql, array $bindings): array` runs the live EXPLAIN and returns the same shape.
+- Produces: `ExplainProbe::parse(array $explain): array` returning
+  `array{scan_type:string, parallel:bool, exec_ms:float}` from a decoded `EXPLAIN ... FORMAT JSON` element (the
+  `array{Plan:..., 'Execution Time'?:float}` shape). `scan_type` is the first node type containing `"Scan"` found
+  top-down (`"Unknown"` if none). `parallel` is true if any node is `Parallel Aware` or a `Gather*` node.
+  `ExplainProbe::probe(Connection, string $sql, array $bindings): array` runs the live EXPLAIN and returns the same
+  shape.
 
 - [ ] **Step 1: Write the failing parser test**
 
@@ -506,12 +535,15 @@ git commit -m "feat: ExplainProbe plan parser and live EXPLAIN capture"
 ### Task 3: Runner
 
 **Files:**
+
 - Create: `bench/Runner.php`
 - Test: `tests/Unit/Bench/RunnerTest.php`
 
 **Interfaces:**
+
 - Consumes: `Variant` (Task 1). A callable operation `Closure(Variant): void`.
-- Produces: `Runner::measure(Closure $operation, Variant $variant, int $warmup, int $iterations): array` returning a `list<int>` of nanosecond durations of length `$iterations` (warmup runs discarded). Uses `hrtime(true)`.
+- Produces: `Runner::measure(Closure $operation, Variant $variant, int $warmup, int $iterations): array` returning a
+  `list<int>` of nanosecond durations of length `$iterations` (warmup runs discarded). Uses `hrtime(true)`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -637,15 +669,23 @@ git commit -m "feat: Runner with warmup-discard timed iterations"
 ### Task 4: Reporters and Env
 
 **Files:**
+
 - Create: `bench/Env.php`, `bench/Report/JsonReporter.php`, `bench/Report/MarkdownReporter.php`
 - Test: `tests/Unit/Bench/JsonReporterTest.php`, `tests/Unit/Bench/MarkdownReporterTest.php`
 
 **Interfaces:**
-- Consumes: cell arrays shaped like `Stats::summarize()` output plus `scenario`/`variant`/`scale` keys; explain arrays shaped like `ExplainProbe::parse()` output plus `scenario`/`scale`; an `env` array; a `params` array; an `amortization` list.
+
+- Consumes: cell arrays shaped like `Stats::summarize()` output plus `scenario`/`variant`/`scale` keys; explain arrays
+  shaped like `ExplainProbe::parse()` output plus `scenario`/`scale`; an `BenchmarkEnvironment` array; a `params` array;
+  an `amortization` list.
 - Produces:
-  - `Env::describe(string $pgVersion, string $gitCommit, string $generatedAt, bool $pgbouncer, bool $emulatePrepares): array` → the `env` block (adds `php_version`, `uname`).
-  - `JsonReporter::render(array $env, array $params, array $cells, array $amortization, array $explain): array` (assembled document) and `JsonReporter::write(string $path, array $document): void`.
-  - `MarkdownReporter::render(array $document): string` returning a table plus a `Headline:` line. `MarkdownReporter::headline(array $document): string` returning just the one-liner.
+    -
+    `Env::describe(string $pgVersion, string $gitCommit, string $generatedAt, bool $pgbouncer, bool $emulatePrepares): array` →
+    the `BenchmarkEnvironment` block (adds `php_version`, `uname`).
+    - `JsonReporter::render(array $env, array $params, array $cells, array $amortization, array $explain): array`
+      (assembled document) and `JsonReporter::write(string $path, array $document): void`.
+    - `MarkdownReporter::render(array $document): string` returning a table plus a `Headline:` line.
+      `MarkdownReporter::headline(array $document): string` returning just the one-liner.
 
 - [ ] **Step 1: Write the failing JsonReporter test**
 
@@ -661,7 +701,7 @@ namespace Radiergummi\LaravelRls\Tests\Unit\Bench;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
 use PHPUnit\Framework\TestCase;
-use Radiergummi\LaravelRls\Bench\Env;
+use Radiergummi\LaravelRls\Bench\BenchmarkEnvironment;
 use Radiergummi\LaravelRls\Bench\Report\JsonReporter;
 
 use function json_decode;
@@ -676,7 +716,7 @@ class JsonReporterTest extends TestCase
     #[TestDox('render() assembles an env-stamped baseline document')]
     public function renders_document(): void
     {
-        $env = Env::describe('PostgreSQL 18.0', 'abc123', '2026-07-06T00:00:00Z', false, false);
+        $env = BenchmarkEnvironment::describe('PostgreSQL 18.0', 'abc123', '2026-07-06T00:00:00Z', false, false);
         $doc = (new JsonReporter())->render(
             $env,
             ['iterations' => 2000, 'warmup' => 200, 'scales' => ['1k', '100k']],
@@ -700,7 +740,7 @@ class JsonReporterTest extends TestCase
         $path = tempnam(sys_get_temp_dir(), 'bench');
         $reporter = new JsonReporter();
         $doc = $reporter->render(
-            Env::describe('PostgreSQL 18.0', 'abc123', '2026-07-06T00:00:00Z', false, false),
+            BenchmarkEnvironment::describe('PostgreSQL 18.0', 'abc123', '2026-07-06T00:00:00Z', false, false),
             ['iterations' => 5, 'warmup' => 2, 'scales' => ['1k']],
             [],
             [],
@@ -766,7 +806,7 @@ class MarkdownReporterTest extends TestCase
 - [ ] **Step 3: Run tests to verify they fail**
 
 Run: `vendor/bin/phpunit tests/Unit/Bench/JsonReporterTest.php tests/Unit/Bench/MarkdownReporterTest.php`
-Expected: FAIL — `Env`, `JsonReporter`, `MarkdownReporter` not found.
+Expected: FAIL — `BenchmarkEnvironment`, `JsonReporter`, `MarkdownReporter` not found.
 
 - [ ] **Step 4: Write Env**
 
@@ -966,14 +1006,23 @@ git commit -m "feat: Env capture, JSON baseline reporter, and markdown reporter"
 ### Task 5: Boot (Testbench app factory)
 
 **Files:**
+
 - Create: `bench/Boot.php`
 - Test: `tests/Feature/Bench/BootTest.php`
 
 **Interfaces:**
-- Consumes: `Radiergummi\LaravelRls\RlsServiceProvider`, Orchestra Testbench.
-- Produces: `Boot::app(): \Illuminate\Contracts\Foundation\Application` — a booted app with `RlsServiceProvider` registered, `database.default = pgsql` (as `rls_app`), a `pgsql_admin` connection (as `rls_bypass`), `rls.role_model = owner`, `rls.admin_connection = pgsql_admin`. The default connection resolves to an `RlsPostgresConnection`.
 
-> **Implementation note (read before Step 3):** the exact Testbench functional API (`Orchestra\Testbench\Foundation\Application::create`) can vary between testbench-core `^9` and `^10`. If the signature below does not match, consult `vendor/orchestra/testbench-core/src/Foundation/Application.php` (method `create`) and the `Orchestra\Testbench\Concerns\CreatesApplication` trait. The GOAL is fixed: a booted app with our provider registered and the two connections configured. The `BootTest` below is the arbiter — iterate until it passes.
+- Consumes: `Radiergummi\LaravelRls\RlsServiceProvider`, Orchestra Testbench.
+- Produces: `Boot::app(): \Illuminate\Contracts\Foundation\Application` — a booted app with `RlsServiceProvider`
+  registered, `database.default = pgsql` (as `rls_app`), a `pgsql_admin` connection (as `rls_bypass`),
+  `rls.role_model = owner`, `rls.admin_connection = pgsql_admin`. The default connection resolves to an
+  `RlsPostgresConnection`.
+
+> **Implementation note (read before Step 3):** the exact Testbench functional API
+> (`Orchestra\Testbench\Foundation\Application::create`) can vary between testbench-core `^9` and `^10`. If the signature
+> below does not match, consult `vendor/orchestra/testbench-core/src/Foundation/Application.php` (method `create`) and the
+> `Orchestra\Testbench\Concerns\CreatesApplication` trait. The GOAL is fixed: a booted app with our provider registered
+> and the two connections configured. The `BootTest` below is the arbiter — iterate until it passes.
 
 - [ ] **Step 1: Write the failing boot test**
 
@@ -1076,7 +1125,8 @@ final class Boot
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `vendor/bin/phpunit tests/Feature/Bench/BootTest.php`
-Expected: PASS (1 test). If it fails on the Testbench API, follow the implementation note above and iterate against this test.
+Expected: PASS (1 test). If it fails on the Testbench API, follow the implementation note above and iterate against this
+test.
 
 - [ ] **Step 5: Commit**
 
@@ -1090,16 +1140,26 @@ git commit -m "feat: Boot factory that boots a real RLS app via Testbench"
 ### Task 6: Schema + TableSet (deterministic seed)
 
 **Files:**
+
 - Create: `bench/TableSet.php`, `bench/Schema.php`
 - Test: `tests/Feature/Bench/SchemaTest.php`
 
 **Interfaces:**
-- Consumes: `Boot::app()` (Task 5), the booted app's DB + Schema builder, the `isolatedBy` macro (registered by the provider), the `rls_bypass` (`pgsql_admin`) connection.
-- Produces:
-  - `TableSet` — readonly DTO: `string $scale`, `string $probeTenantId`, `string $probeRowId`, `int $probeRangeLo`, `int $probeRangeHi`, and constants `FLOOR='bench_floor'`, `CONTROL='bench_control'`, `TREATMENT='bench_treatment'`.
-  - `Schema::__construct(Application $app)`; `Schema::rowCount(string $scale): int` (1000 for `'1k'`, 100000 for `'100k'`); `Schema::seed(string $scale): TableSet` (drops + recreates the three tables, indexes the scoping column, seeds identical deterministic data via `pgsql_admin`, returns the probe DTO); `Schema::drop(): void`.
 
-Seeding rules: rows spread across a fixed 100 tenants (`sprintf('00000000-0000-0000-0000-%012d', $t)` for `$t` in `0..99`). Row `i` (`0-based`) has `tenant_id = tenants[i % 100]`, `n = i`, `id = sprintf('00000000-0000-4000-8000-%012d', i)`. Probe tenant = tenant `42`; probe row = the row whose `n` is the first index with `i % 100 === 42` (i.e. `n = 42`); probe range = `[0, rowCount/10]`.
+- Consumes: `Boot::app()` (Task 5), the booted app's DB + Schema builder, the `isolatedBy` macro (registered by the
+  provider), the `rls_bypass` (`pgsql_admin`) connection.
+- Produces:
+    - `TableSet` — readonly DTO: `string $scale`, `string $probeTenantId`, `string $probeRowId`, `int $probeRangeLo`,
+      `int $probeRangeHi`, and constants `FLOOR='bench_floor'`, `CONTROL='bench_control'`,
+      `TREATMENT='bench_treatment'`.
+    - `Schema::__construct(Application $app)`; `Schema::rowCount(string $scale): int` (1000 for `'1k'`, 100000 for
+      `'100k'`); `Schema::seed(string $scale): TableSet` (drops + recreates the three tables, indexes the scoping
+      column, seeds identical deterministic data via `pgsql_admin`, returns the probe DTO); `Schema::drop(): void`.
+
+Seeding rules: rows spread across a fixed 100 tenants (`sprintf('00000000-0000-0000-0000-%012d', $t)` for `$t` in
+`0..99`). Row `i` (`0-based`) has `tenant_id = tenants[i % 100]`, `n = i`,
+`id = sprintf('00000000-0000-4000-8000-%012d', i)`. Probe tenant = tenant `42`; probe row = the row whose `n` is the
+first index with `i % 100 === 42` (i.e. `n = 42`); probe range = `[0, rowCount/10]`.
 
 - [ ] **Step 1: Write the failing schema test**
 
@@ -1323,12 +1383,19 @@ git commit -m "feat: deterministic bench schema seeding (floor/control/treatment
 ### Task 7: Scenario contract and the four query shapes
 
 **Files:**
-- Create: `bench/Scenario/Scenario.php`, `bench/Scenario/PointSelect.php`, `bench/Scenario/RangeScan.php`, `bench/Scenario/Aggregate.php`, `bench/Scenario/Insert.php`
+
+- Create: `bench/Scenario/Scenario.php`, `bench/Scenario/PointSelect.php`, `bench/Scenario/RangeScan.php`,
+  `bench/Scenario/Aggregate.php`, `bench/Scenario/Insert.php`
 - Test: `tests/Feature/Bench/ScenarioTest.php`
 
 **Interfaces:**
+
 - Consumes: `Boot::app()`, `Schema`/`TableSet`, `Variant`, the `rls` manager (`isolateTo`).
-- Produces: abstract `Scenario` with `__construct(Application $app, TableSet $tables)`, `abstract name(): string`, `abstract run(Variant $variant): void` (the single timed op), `explainTarget(): ?array` (default `null`; read scenarios return `array{sql:string, bindings:list<mixed>, tenant:string}` for the treatment read). Four concrete scenarios named `point_select`, `range_scan`, `aggregate`, `insert`. Treatment `run()`/`explainTarget()` reads must be scoped by wrapping in `Rls::isolateTo`.
+- Produces: abstract `Scenario` with `__construct(Application $app, TableSet $tables)`, `abstract name(): string`,
+  `abstract run(Variant $variant): void` (the single timed op), `explainTarget(): ?array` (default `null`; read
+  scenarios return `array{sql:string, bindings:list<mixed>, tenant:string}` for the treatment read). Four concrete
+  scenarios named `point_select`, `range_scan`, `aggregate`, `insert`. Treatment `run()`/`explainTarget()` reads must be
+  scoped by wrapping in `Rls::isolateTo`.
 
 - [ ] **Step 1: Write the failing scenario test**
 
@@ -1677,13 +1744,18 @@ git commit -m "feat: bench scenarios (point-select, range-scan, aggregate, inser
 ### Task 8: CLI entry, smoke test, and committed baseline
 
 **Files:**
+
 - Create: `bench/run.php`, `bench/baseline.json` (generated)
 - Modify: `composer.json` (add `"bench"` script)
 - Test: `tests/Feature/Bench/BenchSmokeTest.php`
 
 **Interfaces:**
+
 - Consumes: everything above.
-- Produces: `composer bench -- [--scale=1k,100k] [--iterations=N] [--warmup=N] [--json=path] [--md=path]` → writes a baseline JSON (default `bench/baseline.json`) and prints the markdown report. `run.php` orchestrates: boot → for each scale seed → for each scenario × variant run `Runner`+`Stats` → amortization probe → `ExplainProbe` for read scenarios → reporters.
+- Produces: `composer bench -- [--scale=1k,100k] [--iterations=N] [--warmup=N] [--json=path] [--md=path]` → writes a
+  baseline JSON (default `bench/baseline.json`) and prints the markdown report. `run.php` orchestrates: boot → for each
+  scale seed → for each scenario × variant run `Runner`+`Stats` → amortization probe → `ExplainProbe` for read
+  scenarios → reporters.
 
 - [ ] **Step 1: Add the composer bench script**
 
@@ -1706,7 +1778,7 @@ Expected: `Generated autoload files`.
 declare(strict_types=1);
 
 use Radiergummi\LaravelRls\Bench\Boot;
-use Radiergummi\LaravelRls\Bench\Env;
+use Radiergummi\LaravelRls\Bench\BenchmarkEnvironment;
 use Radiergummi\LaravelRls\Bench\ExplainProbe;
 use Radiergummi\LaravelRls\Bench\Report\JsonReporter;
 use Radiergummi\LaravelRls\Bench\Report\MarkdownReporter;
@@ -1808,7 +1880,7 @@ foreach ($scales as $scale) {
     $schema->drop();
 }
 
-$env = Env::describe(
+$env = BenchmarkEnvironment::describe(
     (string) $db->selectOne('select version() as v')->v,
     trim((string) shell_exec('git rev-parse --short HEAD')),
     gmdate('Y-m-d\TH:i:s\Z'),
@@ -1896,7 +1968,8 @@ composer format
 composer test
 ```
 
-Expected: phpstan clean, pint passed, all tests green (the bench unit + feature tests included; the real bench run is NOT part of the suite).
+Expected: phpstan clean, pint passed, all tests green (the bench unit + feature tests included; the real bench run is
+NOT part of the suite).
 
 - [ ] **Step 6: Generate the committed baseline and confirm the index-scan evidence**
 
@@ -1904,13 +1977,15 @@ Expected: phpstan clean, pint passed, all tests green (the bench unit + feature 
 composer bench -- --scale=1k,100k --json=bench/baseline.json
 ```
 
-Expected: prints the markdown report with a `Headline:` line. Then confirm the shipped predicate is index-backed at scale (the milestone's "done when" evidence):
+Expected: prints the markdown report with a `Headline:` line. Then confirm the shipped predicate is index-backed at
+scale (the milestone's "done when" evidence):
 
 ```bash
 php -r '$d=json_decode(file_get_contents("bench/baseline.json"),true); foreach($d["explain"] as $e){ echo "{$e["scenario"]} {$e["scale"]}: {$e["scan_type"]} parallel=".($e["parallel"]?"yes":"no")."\n"; }'
 ```
 
-Expected: the `range_scan` and `point_select` entries at `100k` show an index/bitmap scan (NOT `Seq Scan`). If `range_scan @ 100k` reports `Seq Scan`, the predicate or index is wrong — stop and investigate before committing.
+Expected: the `range_scan` and `point_select` entries at `100k` show an index/bitmap scan (NOT `Seq Scan`). If
+`range_scan @ 100k` reports `Seq Scan`, the predicate or index is wrong — stop and investigate before committing.
 
 - [ ] **Step 7: Commit**
 
@@ -1923,7 +1998,23 @@ git commit -m "feat: rls bench CLI, smoke test, and committed baseline.json"
 
 ## Self-Review Notes
 
-- **Spec coverage:** floor/control/treatment + amortization probe (Tasks 6–8, run.php); 4 query shapes × 1k/100k (Tasks 7–8); two clocks — PHP `hrtime` percentiles (Task 3) + DB-side `EXPLAIN` (Task 2, wired Task 8); env-stamped JSON + markdown headline (Tasks 4, 8); dev-only `autoload-dev` (Task 1); Testbench boot with real provider (Task 5); deterministic seeding via `rls_bypass` (Task 6); `Stats`/`ExplainProbe` unit tests + smoke test (Tasks 1, 2, 8); committed `baseline.json` + index-scan evidence (Task 8). Deferred cells (concurrency, 10M, session/boundary/pgbouncer, compound policy, pgbench) are out of scope per Global Constraints and the spec's non-goals.
-- **Placeholder scan:** none — every step ships complete code or an exact command. The one API-uncertainty (Testbench `Application::create`) is called out with a concrete first attempt, a vendor file to consult, and `BootTest` as the arbiter.
-- **Type consistency:** `Variant` (Floor/Control/Treatment) used identically across Runner/Scenario/run.php; `Stats::summarize` output keys (`*_us`) consumed verbatim by JsonReporter/MarkdownReporter and spread into cells in run.php; `ExplainProbe::parse` output keys (`scan_type`/`parallel`/`exec_ms`) consumed in run.php and the smoke test; `TableSet` constants (`FLOOR`/`CONTROL`/`TREATMENT`) and probe fields used identically in Schema and every Scenario; `Boot::app()` return type consumed uniformly.
-- **Known risks to watch during execution:** (1) the Testbench factory API — arbiter is `BootTest` (Task 5). (2) At `1k` the planner may legitimately choose a seq scan (small table); the index-scan assertion is only meaningful at `100k` (Task 8 Step 6), which is why the smoke test at `1k` asserts structure only. (3) Separate-process tests (Tasks 5–7) are required to avoid facade clashes with the Testbench suite; if a runner lacks process isolation support, run those files individually.
+- **Spec coverage:** floor/control/treatment + amortization probe (Tasks 6–8, run.php); 4 query shapes × 1k/100k (Tasks
+  7–8); two clocks — PHP `hrtime` percentiles (Task 3) + DB-side `EXPLAIN` (Task 2, wired Task 8); env-stamped JSON +
+  markdown headline (Tasks 4, 8); dev-only `autoload-dev` (Task 1); Testbench boot with real provider (Task 5);
+  deterministic seeding via `rls_bypass` (Task 6); `Stats`/`ExplainProbe` unit tests + smoke test (Tasks 1, 2, 8);
+  committed `baseline.json` + index-scan evidence (Task 8). Deferred cells (concurrency, 10M,
+  session/boundary/pgbouncer, compound policy, pgbench) are out of scope per Global Constraints and the spec's
+  non-goals.
+- **Placeholder scan:** none — every step ships complete code or an exact command. The one API-uncertainty (Testbench
+  `Application::create`) is called out with a concrete first attempt, a vendor file to consult, and `BootTest` as the
+  arbiter.
+- **Type consistency:** `Variant` (Floor/Control/Treatment) used identically across Runner/Scenario/run.php;
+  `Stats::summarize` output keys (`*_us`) consumed verbatim by JsonReporter/MarkdownReporter and spread into cells in
+  run.php; `ExplainProbe::parse` output keys (`scan_type`/`parallel`/`exec_ms`) consumed in run.php and the smoke test;
+  `TableSet` constants (`FLOOR`/`CONTROL`/`TREATMENT`) and probe fields used identically in Schema and every Scenario;
+  `Boot::app()` return type consumed uniformly.
+- **Known risks to watch during execution:** (1) the Testbench factory API — arbiter is `BootTest` (Task 5). (2) At `1k`
+  the planner may legitimately choose a seq scan (small table); the index-scan assertion is only meaningful at `100k`
+  (Task 8 Step 6), which is why the smoke test at `1k` asserts structure only. (3) Separate-process tests (Tasks 5–7)
+  are required to avoid facade clashes with the Testbench suite; if a runner lacks process isolation support, run those
+  files individually.

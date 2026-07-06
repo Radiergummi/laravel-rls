@@ -6,10 +6,13 @@ namespace Radiergummi\LaravelRls\Context;
 
 use BadMethodCallException;
 use Closure;
+use Illuminate\Container\Attributes\Log;
+use Illuminate\Container\Attributes\Singleton;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Log\Context\Repository;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Psr\Log\LoggerInterface;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
 use Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
@@ -22,19 +25,28 @@ use function is_array;
 /**
  * RLS Manager
  *
- * @template TUser = mixed
+ * @template TUser of Authenticatable = Authenticatable
  */
+#[Singleton]
 class RlsManager
 {
     private const KEY = 'rls';
 
-    /** @var null|Closure(): void */
+    /**
+     * @var null|Closure(): void
+     */
     private ?Closure $sync = null;
 
-    /** @var null|Closure(string, Closure(): mixed): mixed */
+    /**
+     * A callback to handle RLS bypass.
+     *
+     * @var null|Closure(non-empty-string, Closure(): mixed): mixed
+     */
     private ?Closure $bypassHandler = null;
 
-    /** @var null|Closure(TUser): mixed */
+    /**
+     * @var null|Closure(TUser): mixed
+     */
     private ?Closure $resolver = null;
 
     private ?ContextSchema $schema = null;
@@ -48,6 +60,8 @@ class RlsManager
 
     public function __construct(
         private readonly Repository $context,
+        #[Log('rls')]
+        private readonly LoggerInterface $logger,
         private readonly ?Dispatcher $events = null,
     ) {}
 
@@ -133,16 +147,16 @@ class RlsManager
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
-    public function establishFromUser(mixed $user): void
+    public function establishFromUser(Authenticatable $user): void
     {
         if ($this->resolver === null) {
             return;
         }
 
+        /** @var null|array<string, null|scalar> $context */
         $context = ($this->resolver)($user);
 
         if (is_array($context) && $context !== []) {
-            // @var array<string, scalar|null> $context
             $this->push(RlsContext::make($context));
         }
     }
@@ -213,11 +227,11 @@ class RlsManager
      * callback against a privileged admin connection. The provider installs it in both role models;
      * when unset, withoutIsolation() hard-fails with AdminConnectionRequired.
      *
-     * @param null|Closure(string, Closure(): mixed): mixed $handler
+     * @param null|callable(non-empty-string, Closure(): mixed): mixed $handler
      */
-    public function setBypassHandler(?Closure $handler): void
+    public function setBypassHandler(?callable $handler): void
     {
-        $this->bypassHandler = $handler;
+        $this->bypassHandler = $handler ? $handler(...) : null;
     }
 
     /**
@@ -307,7 +321,8 @@ class RlsManager
     /**
      * @template T
      *
-     * @param Closure(): T $callback
+     * @param non-empty-string $reason
+     * @param Closure(): T     $callback
      *
      * @return T
      *
@@ -322,7 +337,8 @@ class RlsManager
     /**
      * @template T
      *
-     * @param Closure(): T $callback
+     * @param non-empty-string $reason
+     * @param Closure(): T     $callback
      *
      * @return T
      *
@@ -334,9 +350,9 @@ class RlsManager
         $this->events?->dispatch(new RlsBypassed($reason));
 
         // Bypass always routes to a privileged admin connection (a BYPASSRLS role). There is no
-        // in-band bypass: the read predicate is equality-only for index performance, and under FORCE
-        // there is no way to disable RLS within the session. Without a handler (unbooted manager, or
-        // no admin_connection configured) there is nothing to route to — fail loud.
+        // in-band bypass: the read predicate is equality-only for index performance, and under
+        // FORCE there is no way to disable RLS within the session. Without a handler (unbooted
+        // manager, or no admin_connection configured) there is nothing to route to, so we bail.
         if ($this->bypassHandler === null) {
             throw AdminConnectionRequired::forReason($reason);
         }
@@ -388,7 +404,7 @@ class RlsManager
             throw RlsContextLeaked::at($boundary, $isolationKeys);
         }
 
-        Log::critical(
+        $this->logger->critical(
             "RLS context leaked into a new {$boundary} and was cleared.",
             ['boundary' => $boundary, 'isolation_keys' => $isolationKeys],
         );

@@ -10,10 +10,7 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Foundation\Application;
-use Illuminate\Log\Context\Repository;
 use Illuminate\Queue\Events\Looping;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Octane\Events\RequestReceived;
 use LogicException;
@@ -24,13 +21,15 @@ use Radiergummi\LaravelRls\Console\CheckCommand;
 use Radiergummi\LaravelRls\Console\InstallCommand;
 use Radiergummi\LaravelRls\Console\SyncCommand;
 use Radiergummi\LaravelRls\Context\RlsManager;
+use Radiergummi\LaravelRls\Contracts\BypassHandler;
 use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
-use Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired;
 use Radiergummi\LaravelRls\Exceptions\ResolverCollision;
+use Radiergummi\LaravelRls\Listeners\RlsBypassedListener;
 use Radiergummi\LaravelRls\Schema\RlsSchemaMacros;
 
 use function assert;
+use function config;
 use function is_string;
 
 class RlsServiceProvider extends ServiceProvider
@@ -51,6 +50,7 @@ class RlsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerConnectionResolver();
+        $this->registerLogChannel();
 
         $manager = $this->app->make(RlsManager::class);
 
@@ -74,14 +74,7 @@ class RlsServiceProvider extends ServiceProvider
 
         // Bypass observability: every withoutIsolation()/system() is logged with its reason, so RLS
         // bypass stays visible in production logs.
-        $this->app->get(Dispatcher::class)->listen(
-            RlsBypassed::class,
-            fn(RlsBypassed $event)
-                => Log::notice(
-                    "RLS bypassed: {$event->reason}",
-                    ['reason' => $event->reason],
-                ),
-        );
+        $this->app->get(Dispatcher::class)->listen(RlsBypassed::class, RlsBypassedListener::class);
 
         // Worker boundary handling: on long-lived workers a context that was never popped would
         // carry into the next job/request (leak canary), and under the session strategy a session
@@ -118,24 +111,7 @@ class RlsServiceProvider extends ServiceProvider
         // the isolation predicate is equality-only for index performance, so there is no in-band
         // bypass to fall back on. The handler is installed unconditionally; it hard-fails when no
         // admin_connection is configured.
-        $manager->setBypassHandler(function (string $reason, Closure $callback) {
-            $admin = config('rls.admin_connection');
-            assert(is_string($admin) || $admin === null);
-
-            if ($admin === null) {
-                throw AdminConnectionRequired::forReason($reason);
-            }
-
-            $database = $this->app->make(DatabaseManager::class);
-            $previous = $database->getDefaultConnection();
-            $database->setDefaultConnection($admin);
-
-            try {
-                return $callback();
-            } finally {
-                $database->setDefaultConnection($previous);
-            }
-        });
+        $manager->setBypassHandler($this->app->make(BypassHandler::class));
     }
 
     /**
@@ -173,6 +149,27 @@ class RlsServiceProvider extends ServiceProvider
     }
 
     /**
+     * Provide a default 'rls' log channel.
+     *
+     * It forwards to the app's default channel; operators can split RLS security events out by
+     * defining their own logging.channels.rls, which this leaves untouched.
+     */
+    private function registerLogChannel(): void
+    {
+        if (config('logging.channels.rls') !== null) {
+            return;
+        }
+
+        config([
+            'logging.channels.rls' => [
+                'driver' => 'stack',
+                'channels' => [config('logging.default', 'stack')],
+                'ignore_exceptions' => false,
+            ],
+        ]);
+    }
+
+    /**
      * A collision is a foreign resolver already in place (not our own, tracked by identity) while
      * connection_class is still the default — meaning we would overwrite the other package rather
      * than compose with it.
@@ -199,10 +196,6 @@ class RlsServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/rls.php', 'rls');
 
-        $this->app->singleton(RlsManager::class, fn(Application $app) => new RlsManager(
-            $app->make(Repository::class),
-            $app->make('events'),
-        ));
         $this->app->alias(RlsManager::class, 'rls');
 
         if ($this->app->runningInConsole()) {

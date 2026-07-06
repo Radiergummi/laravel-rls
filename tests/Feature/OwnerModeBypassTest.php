@@ -13,6 +13,7 @@ use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Support\RlsFunctions;
+use Radiergummi\LaravelRls\Tests\WithTestingUtils;
 use RuntimeException;
 
 /**
@@ -26,6 +27,8 @@ use RuntimeException;
 #[TestDox('Owner Mode Bypass')]
 class OwnerModeBypassTest extends TestCase
 {
+    use WithTestingUtils;
+
     private string $a = '11111111-1111-1111-1111-111111111111';
     private string $b = '22222222-2222-2222-2222-222222222222';
 
@@ -37,8 +40,10 @@ class OwnerModeBypassTest extends TestCase
     #[TestDox('The FORCE-bound owner is confined by the equality-only predicate')]
     public function scoped_reads_are_confined_under_force(): void
     {
-        $forced = DB::connection('pgsql_admin')
-            ->selectOne("select relforcerowsecurity as value from pg_class where relname = 'owner_things'")->value;
+        $forced = $this->selectSingleValueFromDatabase(
+            "select relforcerowsecurity as value from pg_class where relname = 'owner_things'",
+            connectionName: 'pgsql_admin',
+        );
         $this->assertTrue((bool) $forced, 'sanity: FORCE is on in owner mode');
 
         Rls::isolateTo(

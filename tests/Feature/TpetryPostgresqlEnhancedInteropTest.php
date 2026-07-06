@@ -7,10 +7,12 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
+use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Tests\Fixtures\Support\RlsEnhancedConnection;
 use Radiergummi\LaravelRls\Tests\TestCase;
+use RuntimeException;
 use Tpetry\PostgresqlEnhanced\PostgresEnhancedConnection;
 use Tpetry\PostgresqlEnhanced\PostgresqlEnhancedServiceProvider;
 
@@ -29,6 +31,10 @@ class TpetryPostgresqlEnhancedInteropTest extends TestCase
         $this->assertInstanceOf(RlsEnhancedConnection::class, $connection);
     }
 
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
     #[Test]
     #[TestDox('RLS context is still available in postgresql-enhanced')]
     public function rls_context_injection_still_works_under_postgresql_enhanced(): void
@@ -37,7 +43,7 @@ class TpetryPostgresqlEnhancedInteropTest extends TestCase
 
         $this->assertSame(
             'postgresql-enhanced-tenant',
-            DB::selectOne("select rls.context('tenant_id') as value")->value,
+            $this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"),
         );
     }
 

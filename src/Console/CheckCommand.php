@@ -6,6 +6,9 @@ namespace Radiergummi\LaravelRls\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use stdClass;
+
+use function assert;
 
 class CheckCommand extends Command
 {
@@ -41,15 +44,19 @@ class CheckCommand extends Command
         $violations = [];
 
         foreach ($tables as $table) {
-            $enabled = DB::selectOne(
+            $enablementResult = DB::selectOne(
                 'select relrowsecurity from pg_class where relname = ?',
                 [$table->name],
-            )?->relrowsecurity;
+            );
+            assert($enablementResult instanceof stdClass || $enablementResult === null);
+            $enabled = $enablementResult?->relrowsecurity;
 
-            $policies = DB::selectOne(
+            $policiesResult = DB::selectOne(
                 'select count(*) as count from pg_policies where tablename = ?',
                 [$table->name],
-            )->count;
+            );
+            assert($policiesResult instanceof stdClass);
+            $policies = $policiesResult->count;
 
             if (!$enabled) {
                 $violations[] = "{$table->name}: RLS not enabled";

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Log;
+use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
+use Psr\Log\LoggerInterface;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
@@ -47,12 +49,20 @@ class BypassObservabilityTest extends TestCase
     #[TestDox('withoutIsolation() logs the bypass with its reason')]
     public function bypass_is_logged_with_its_reason(): void
     {
-        $log = Log::spy();
+        $logger = Mockery::spy(LoggerInterface::class);
+        $logManager = $this->app->make(LogManager::class);
+
+        // extend() only fires for a channel whose configured driver matches the extension name, so
+        // the 'rls' channel must exist in config or channel('rls') falls back to the emergency
+        // logger and the spy is never consulted.
+        config(['logging.channels.rls' => ['driver' => 'rls']]);
+        $logManager->forgetChannel('rls');
+        $logManager->extend('rls', fn() => $logger);
 
         Rls::withoutIsolation('seeding', static fn() => null);
 
-        $log
-            ->shouldHaveReceived('notice')
+        $logger
+            ->shouldHaveReceived('warning')
             ->withArgs(fn(string $message, array $context = [])
                 => str_contains($message, 'seeding')
                 || ($context['reason'] ?? null) === 'seeding')

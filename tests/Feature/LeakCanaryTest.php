@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Log\LogManager;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
 use PHPUnit\Framework\ExpectationFailedException;
+use Psr\Log\LoggerInterface;
 use Radiergummi\LaravelRls\Context\RlsManager;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Exceptions\RlsContextLeaked;
@@ -25,20 +29,33 @@ class LeakCanaryTest extends TestCase
      * @throws InvalidContextValue
      * @throws RlsContextLeaked
      * @throws RuntimeException
+     * @throws BindingResolutionException
      */
     #[Test]
     #[TestDox('Logs a critical message and clears a leaked context')]
     public function logs_and_clears_a_leaked_context(): void
     {
-        $log = Log::spy();
-        Rls::isolateTo(['tenant_id' => 'leaked-from-previous-job']);
+        $logger = Mockery::spy(LoggerInterface::class);
+        $logManager = $this->app->make(LogManager::class);
 
-        app(RlsManager::class)->checkForLeak('job');
+        // extend() only fires for a channel whose configured driver matches the extension name, so
+        // the 'rls' channel must exist in config or channel('rls') falls back to the emergency
+        // logger and the spy is never consulted.
+        config(['logging.channels.rls' => ['driver' => 'rls']]);
+        $logManager->forgetChannel('rls');
+        $logManager->extend('rls', fn() => $logger);
 
-        /** @noinspection PhpUndefinedMethodInspection */
-        $log->shouldHaveReceived('critical')->once();
+        // The manager is a singleton built at boot, so it captured the real 'rls' channel logger
+        // before the swap above. Drop it and rebuild so it resolves the mocked channel.
+        $this->app->forgetInstance(RlsManager::class);
+        $manager = $this->app->make(RlsManager::class);
+
+        $manager->isolateTo(['tenant_id' => 'leaked-from-previous-job']);
+        $manager->checkForLeak('job');
+        $logger->shouldHaveReceived('critical')->once();
+
         $this->assertFalse(
-            Rls::hasContext(),
+            $manager->hasContext(),
             'leaked context must be cleared before the new unit of work runs',
         );
     }

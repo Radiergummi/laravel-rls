@@ -9,9 +9,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 
+use function assert;
+use function config;
+
 abstract class TestCase extends Orchestra
 {
     use RefreshDatabase;
+    use WithTestingUtils;
 
     protected function getPackageProviders($app): array
     {
@@ -46,10 +50,15 @@ abstract class TestCase extends Orchestra
      */
     protected function useBypassAdminConnection(Application $app): void
     {
-        $app['config']->set('database.connections.pgsql_admin', array_merge(
-            $app['config']->get('database.connections.pgsql'),
-            ['username' => 'rls_bypass'],
-        ));
-        $app['config']->set('rls.admin_connection', 'pgsql_admin');
+        $connection = config('database.connections.pgsql');
+        assert(is_array($connection));
+
+        config([
+            'database.connections.pgsql_admin' => [
+                ...$connection,
+                'username' => 'rls_bypass',
+            ],
+        ]);
+        config(['rls.admin_connection' => 'pgsql_admin']);
     }
 }

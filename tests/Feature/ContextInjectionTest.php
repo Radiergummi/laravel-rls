@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
-use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
@@ -27,7 +26,7 @@ class ContextInjectionTest extends TestCase
         Rls::isolateTo(['tenant_id' => 'abc']);
         $this->assertSame(
             'abc',
-            DB::selectOne("select rls.context('tenant_id') as value")->value,
+            $this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"),
         );
     }
 
@@ -42,8 +41,8 @@ class ContextInjectionTest extends TestCase
         Rls::isolateTo(['tenant_id' => 'xyz'], fn()
             => $this->assertSame(
                 'xyz',
-                DB::selectOne("select rls.context('tenant_id') as value")->value,
+                $this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"),
             ));
-        $this->assertNull(DB::selectOne("select rls.context('tenant_id') as value")->value);
+        $this->assertNull($this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"));
     }
 }

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use Radiergummi\LaravelRls\Bench\BenchmarkEnvironment;
 use Radiergummi\LaravelRls\Bench\Boot;
-use Radiergummi\LaravelRls\Bench\Env;
 use Radiergummi\LaravelRls\Bench\ExplainProbe;
 use Radiergummi\LaravelRls\Bench\Report\JsonReporter;
 use Radiergummi\LaravelRls\Bench\Report\MarkdownReporter;
@@ -87,20 +87,28 @@ foreach ($scales as $scale) {
         }
     }
 
-    $tenPerTxn = Stats::summarize($runner->measure(
-        static function (Variant $v) use ($rls, $db, $tables, $queriesPerTxn): void {
-            $rls->isolateTo(['tenant_id' => $tables->probeTenantId], static function () use ($db, $tables, $queriesPerTxn): void {
-                $db->transaction(static function () use ($db, $tables, $queriesPerTxn): void {
-                    for ($q = 0; $q < $queriesPerTxn; $q++) {
-                        $db->select('select * from ' . TableSet::TREATMENT . ' where id = ?', [$tables->probeRowId]);
-                    }
-                });
-            });
-        },
-        Variant::Treatment,
-        $warmup,
-        $iterations,
-    ))['mean_us'] / $queriesPerTxn;
+    $tenPerTxn = Stats::summarize(
+        $runner->measure(
+            static function (Variant $v) use ($rls, $db, $tables, $queriesPerTxn): void {
+                $rls->isolateTo(
+                    ['tenant_id' => $tables->probeTenantId],
+                    static function () use ($db, $tables, $queriesPerTxn): void {
+                        $db->transaction(static function () use ($db, $tables, $queriesPerTxn): void {
+                            for ($q = 0; $q < $queriesPerTxn; $q++) {
+                                $db->select(
+                                    'select * from ' . TableSet::TREATMENT . ' where id = ?',
+                                    [$tables->probeRowId],
+                                );
+                            }
+                        });
+                    },
+                );
+            },
+            Variant::Treatment,
+            $warmup,
+            $iterations,
+        ),
+    )['mean_us'] / $queriesPerTxn;
     $amortization[] = [
         'scale' => $scale,
         'per_txn_1_query_us' => $one,
@@ -111,7 +119,7 @@ foreach ($scales as $scale) {
     $schema->drop();
 }
 
-$env = Env::describe(
+$env = BenchmarkEnvironment::describe(
     (string) $db->selectOne('select version() as v')->v,
     trim((string) shell_exec('git rev-parse --short HEAD')),
     gmdate('Y-m-d\TH:i:s\Z'),

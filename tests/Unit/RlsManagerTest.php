@@ -9,6 +9,7 @@ use Illuminate\Log\Context\Repository;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Radiergummi\LaravelRls\Context\ContextSchema;
 use Radiergummi\LaravelRls\Context\RlsManager;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
@@ -31,7 +32,7 @@ class RlsManagerTest extends TestCase
 
     private function manager(): RlsManager
     {
-        return new RlsManager(new Repository(new Dispatcher()));
+        return new RlsManager(new Repository(new Dispatcher()), new NullLogger());
     }
 
     /**
@@ -261,7 +262,11 @@ class RlsManagerTest extends TestCase
             },
         );
 
-        $manager = new RlsManager(new Repository(new Dispatcher()), $events);
+        $manager = new RlsManager(
+            new Repository(new Dispatcher()),
+            new NullLogger(),
+            $events,
+        );
         $manager->setBypassHandler(static fn(string $reason, callable $callback) => $callback());
         $manager->withoutIsolation('nightly-report', fn() => null);
 

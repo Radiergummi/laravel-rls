@@ -17,7 +17,7 @@ class RlsFunctionsTest extends TestCase
     #[TestDox('rls.context() returns null when unset')]
     public function context_returns_null_when_unset(): void
     {
-        $this->assertNull(DB::selectOne("select rls.context('tenant_id') as value")->value);
+        $this->assertNull($this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"));
     }
 
     /**
@@ -29,7 +29,7 @@ class RlsFunctionsTest extends TestCase
     {
         DB::transaction(function (): void {
             DB::statement("select set_config('app.tenant_id', 'abc', true)");
-            $this->assertSame('abc', DB::selectOne("select rls.context('tenant_id') as value")->value);
+            $this->assertSame('abc', $this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"));
         });
     }
 
@@ -42,7 +42,7 @@ class RlsFunctionsTest extends TestCase
     {
         DB::transaction(function (): void {
             DB::statement("select set_config('app.tenant_id', '', true)");
-            $this->assertNull(DB::selectOne("select rls.context('tenant_id') as value")->value);
+            $this->assertNull($this->selectSingleValueFromDatabase("select rls.context('tenant_id') as value"));
         });
     }
 }
