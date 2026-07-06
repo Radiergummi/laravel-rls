@@ -31,10 +31,6 @@ final class Aggregate extends Scenario
 
     public function explainTarget(): ?array
     {
-        return [
-            'sql' => 'select count(*) from ' . TableSet::TREATMENT,
-            'bindings' => [],
-            'tenant' => $this->tables->probeTenantId,
-        ];
+        return $this->treatmentExplain('select count(*) from ' . TableSet::TREATMENT, []);
     }
 }

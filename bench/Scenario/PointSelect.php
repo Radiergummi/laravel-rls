@@ -37,10 +37,9 @@ final class PointSelect extends Scenario
 
     public function explainTarget(): ?array
     {
-        return [
-            'sql' => 'select * from ' . TableSet::TREATMENT . ' where id = ?',
-            'bindings' => [$this->tables->probeRowId],
-            'tenant' => $this->tables->probeTenantId,
-        ];
+        return $this->treatmentExplain(
+            'select * from ' . TableSet::TREATMENT . ' where id = ?',
+            [$this->tables->probeRowId],
+        );
     }
 }

@@ -8,7 +8,6 @@ use InvalidArgumentException;
 
 use function array_map;
 use function array_sum;
-use function array_values;
 use function ceil;
 use function count;
 use function max;
@@ -32,7 +31,8 @@ final class Stats
             throw new InvalidArgumentException('Cannot summarize an empty sample set.');
         }
 
-        $us = array_map(static fn($ns): float => $ns / 1000.0, array_values($samplesNs));
+        // sort() reindexes, so there is no need to array_values() the input first.
+        $us = array_map(static fn($ns): float => $ns / 1000.0, $samplesNs);
         sort($us);
 
         $n = count($us);

@@ -19,26 +19,28 @@ final class Insert extends Scenario
     {
         // A write has no WHERE, so floor and control coincide (plain insert). Treatment inserts
         // through the isolated table, exercising WITH CHECK + context injection.
-        $row = static fn(): array => [
+        match ($variant) {
+            Variant::Floor => $this->db()->table(TableSet::FLOOR)->insert($this->row()),
+            Variant::Control => $this->db()->table(TableSet::CONTROL)->insert($this->row()),
+            Variant::Treatment => $this->rls()->isolateTo(
+                ['tenant_id' => $this->tables->probeTenantId],
+                fn() => $this->db()->table(TableSet::TREATMENT)->insert($this->row()),
+            ),
+        };
+    }
+
+    /**
+     * A fresh probe-tenant row (unique id per call).
+     *
+     * @return array{id:string,tenant_id:string,n:int,payload:string}
+     */
+    private function row(): array
+    {
+        return [
             'id' => (string) Str::uuid(),
-            'tenant_id' => null,
+            'tenant_id' => $this->tables->probeTenantId,
             'n' => 0,
             'payload' => 'x',
         ];
-
-        match ($variant) {
-            Variant::Floor => $this->db()->table(TableSet::FLOOR)->insert(
-                ['tenant_id' => $this->tables->probeTenantId] + $row(),
-            ),
-            Variant::Control => $this->db()->table(TableSet::CONTROL)->insert(
-                ['tenant_id' => $this->tables->probeTenantId] + $row(),
-            ),
-            Variant::Treatment => $this->rls()->isolateTo(
-                ['tenant_id' => $this->tables->probeTenantId],
-                fn() => $this->db()->table(TableSet::TREATMENT)->insert(
-                    ['tenant_id' => $this->tables->probeTenantId] + $row(),
-                ),
-            ),
-        };
     }
 }

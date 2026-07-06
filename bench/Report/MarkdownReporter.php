@@ -73,12 +73,8 @@ final class MarkdownReporter
         $treatmentCell = $this->findCell($pointSelectCells, $scale, 'treatment');
         $controlCell = $this->findCell($pointSelectCells, $scale, 'control');
 
-        $p50Delta = $treatmentCell && $controlCell
-            ? number_format((float) $treatmentCell['p50_us'] - (float) $controlCell['p50_us'], 2)
-            : 'n/a';
-        $p99Delta = $treatmentCell && $controlCell
-            ? number_format((float) $treatmentCell['p99_us'] - (float) $controlCell['p99_us'], 2)
-            : 'n/a';
+        $p50Delta = $this->delta($treatmentCell, $controlCell, 'p50_us');
+        $p99Delta = $this->delta($treatmentCell, $controlCell, 'p99_us');
 
         /** @var list<array<string,mixed>> $amortization */
         $amortization = $document['amortization'] ?? [];
@@ -97,6 +93,19 @@ final class MarkdownReporter
             $p99Delta,
             $fixed,
         );
+    }
+
+    /**
+     * The treatment−control delta for one percentile field, or 'n/a' when either cell is missing.
+     *
+     * @param null|array<string,mixed> $treatment
+     * @param null|array<string,mixed> $control
+     */
+    private function delta(?array $treatment, ?array $control, string $field): string
+    {
+        return $treatment && $control
+            ? number_format((float) $treatment[$field] - (float) $control[$field], 2)
+            : 'n/a';
     }
 
     /**

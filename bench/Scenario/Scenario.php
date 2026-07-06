@@ -31,6 +31,18 @@ abstract class Scenario
         return null;
     }
 
+    /**
+     * Shape a treatment-read EXPLAIN target. The probe always runs in the probe-tenant context.
+     *
+     * @param list<mixed> $bindings
+     *
+     * @return array{sql:string,bindings:list<mixed>,tenant:string}
+     */
+    protected function treatmentExplain(string $sql, array $bindings): array
+    {
+        return ['sql' => $sql, 'bindings' => $bindings, 'tenant' => $this->tables->probeTenantId];
+    }
+
     protected function db(): Connection
     {
         return $this->app->make('db')->connection();

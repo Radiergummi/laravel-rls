@@ -101,8 +101,10 @@ final class Schema
             ];
         }
 
+        $chunks = array_chunk($records, 1000);
+
         foreach ([TableSet::FLOOR, TableSet::CONTROL, TableSet::TREATMENT] as $table) {
-            foreach (array_chunk($records, 1000) as $chunk) {
+            foreach ($chunks as $chunk) {
                 $admin->table($table)->insert($chunk);
             }
         }

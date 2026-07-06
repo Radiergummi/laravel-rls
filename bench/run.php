@@ -73,20 +73,25 @@ foreach ($scales as $scale) {
         }
     }
 
-    // Amortization probe: fixed per-transaction set_config cost = single-query txn - per-query
-    // cost inside a 10-query txn. Uses the point-select treatment read.
-    $point = new PointSelect($app, $tables);
-    $one = Stats::summarize($runner->measure(
-        static fn(Variant $v) => $point->run($v),
-        Variant::Treatment,
-        $warmup,
-        $iterations,
-    ))['mean_us'];
+    // Amortization probe: fixed per-transaction set_config cost = single-query-txn latency minus
+    // the per-query cost inside a batched transaction. The single-query figure is the point_select
+    // treatment read already measured above, so we reuse its mean rather than re-measuring it.
+    $queriesPerTxn = 10;
+    $one = 0.0;
+
+    foreach ($cells as $cell) {
+        if ($cell['scenario'] === 'point_select' && $cell['variant'] === 'treatment' && $cell['scale'] === $scale) {
+            $one = $cell['mean_us'];
+
+            break;
+        }
+    }
+
     $tenPerTxn = Stats::summarize($runner->measure(
-        static function (Variant $v) use ($rls, $db, $tables): void {
-            $rls->isolateTo(['tenant_id' => $tables->probeTenantId], static function () use ($db, $tables): void {
-                $db->transaction(static function () use ($db, $tables): void {
-                    for ($q = 0; $q < 10; $q++) {
+        static function (Variant $v) use ($rls, $db, $tables, $queriesPerTxn): void {
+            $rls->isolateTo(['tenant_id' => $tables->probeTenantId], static function () use ($db, $tables, $queriesPerTxn): void {
+                $db->transaction(static function () use ($db, $tables, $queriesPerTxn): void {
+                    for ($q = 0; $q < $queriesPerTxn; $q++) {
                         $db->select('select * from ' . TableSet::TREATMENT . ' where id = ?', [$tables->probeRowId]);
                     }
                 });
@@ -95,7 +100,7 @@ foreach ($scales as $scale) {
         Variant::Treatment,
         $warmup,
         $iterations,
-    ))['mean_us'] / 10.0;
+    ))['mean_us'] / $queriesPerTxn;
     $amortization[] = [
         'scale' => $scale,
         'per_txn_1_query_us' => $one,
