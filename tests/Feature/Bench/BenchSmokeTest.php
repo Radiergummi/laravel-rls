@@ -30,7 +30,8 @@ class BenchSmokeTest extends TestCase
         $root = dirname(__DIR__, 3);
 
         $cmd = sprintf(
-            'php %s/bench/run.php --scale=1k --iterations=5 --warmup=2 --json=%s 2>&1',
+            'php %s/bench/run.php --scale=1k --iterations=5 --warmup=2 '
+            . '--endpoint-iterations=3 --endpoint-warmup=1 --json=%s 2>&1',
             escapeshellarg($root),
             escapeshellarg($json),
         );
@@ -54,6 +55,16 @@ class BenchSmokeTest extends TestCase
         $this->assertIsArray($document['explain']);
         $this->assertIsArray($document['explain'][0]);
         $this->assertArrayHasKey('scan_type', $document['explain'][0]);
+
+        $this->assertArrayHasKey('endpoints', $document);
+        $this->assertNotEmpty($document['endpoints']);
+        $this->assertArrayHasKey('label', $document['endpoints'][0]);
+        $this->assertArrayHasKey('status', $document['endpoints'][0]);
+        $this->assertArrayHasKey('k', $document['endpoints'][0]);
+        $this->assertContains('direct·transaction·wrap', array_column($document['endpoints'], 'label'));
+        $this->assertArrayHasKey('latency_sweep', $document);
+        $this->assertArrayHasKey('toxiproxy', $document['env']);
+        $this->assertArrayHasKey('pgbouncer', $document['env']);
 
         unlink($json);
     }
