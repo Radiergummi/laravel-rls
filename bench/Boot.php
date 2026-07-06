@@ -13,6 +13,17 @@ final class Boot
 {
     public static function app(): Application
     {
+        // Class-level #[Bind]/#[Singleton] attributes (e.g. BypassHandler ->
+        // DefaultBypassHandler, resolved in RlsServiceProvider::boot()) only bind when the
+        // container has an environment resolver, which the provider installs solely under the
+        // 'testing' env. Testbench reports 'testing' only when APP_ENV says so: phpunit.xml sets
+        // it (so the smoke test's run.php subprocess inherits it and works), but a bare
+        // `composer bench` shell does not, leaving BypassHandler unresolvable. Force it here so
+        // the harness boots identically however run.php is invoked.
+        putenv('APP_ENV=testing');
+        $_ENV['APP_ENV'] = 'testing';
+        $_SERVER['APP_ENV'] = 'testing';
+
         return BootApplication::create(
             options: ['extra' => [
                 'providers' => [RlsServiceProvider::class],
