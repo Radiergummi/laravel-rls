@@ -14,6 +14,7 @@ use Radiergummi\LaravelRls\Bench\Boot;
 use Radiergummi\LaravelRls\Bench\Endpoint;
 use Radiergummi\LaravelRls\Bench\EndpointConfig;
 use Radiergummi\LaravelRls\Bench\Schema;
+use Radiergummi\LaravelRls\Bench\Variant;
 use Radiergummi\LaravelRls\Context\RlsManager;
 use Radiergummi\LaravelRls\Database\RlsPostgresConnection;
 use Throwable;
@@ -38,8 +39,8 @@ class EndpointTest extends TestCase
 
                 try {
                     $this->assertTrue($endpoint->treatmentIsCorrect($cfg), $cfg->label);
-                    $endpoint->run($cfg, 'control');
-                    $endpoint->run($cfg, 'treatment');
+                    $endpoint->run($cfg, Variant::Control);
+                    $endpoint->run($cfg, Variant::Treatment);
                 } finally {
                     $app->make(RlsManager::class)->forget();
                     $connection = DB::connection($cfg->connectionName);
@@ -90,7 +91,7 @@ class EndpointTest extends TestCase
 
                 try {
                     $this->assertTrue($endpoint->treatmentIsCorrect($cfg), $cfg->label);
-                    $endpoint->run($cfg, 'treatment');
+                    $endpoint->run($cfg, Variant::Treatment);
                 } finally {
                     $app->make(RlsManager::class)->forget();
                     config(['database.default' => 'pgsql', 'rls.strategy' => 'transaction']);

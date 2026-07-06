@@ -146,9 +146,37 @@ try {
     $pgbouncerAvailable = false;
 }
 
+$matrix = EndpointConfig::matrix();
+
+// Measure one config's control + treatment endpoint means (each the whole K-query op) and the
+// overhead between them. Runner hands the Variant to the operation, which Endpoint::run() dispatches.
+$measure = static function (Endpoint $endpoint, EndpointConfig $cfg) use ($runner, $endpointWarmup, $endpointIterations): array {
+    $mean = static fn(Variant $variant): float => Stats::summarize($runner->measure(
+        static fn(Variant $v) => $endpoint->run($cfg, $v),
+        $variant,
+        $endpointWarmup,
+        $endpointIterations,
+    ))['mean_us'];
+
+    $control = $mean(Variant::Control);
+    $treatment = $mean(Variant::Treatment);
+
+    return [$control, $treatment, $treatment - $control];
+};
+
+// Restore the default connection + strategy after a cell. Resets the session context WHILE
+// rls.strategy is still 'session' (else the reset is a silent no-op and the GUC leaks), THEN
+// restores the defaults — so nothing leaks between configs even if a run throws.
+$restore = static function (string $connectionName) use ($app, $rls): void {
+    $rls->forget();
+    $app->make('db')->connection($connectionName)->resetSessionContext();
+    $app['config']->set('database.default', 'pgsql');
+    $app['config']->set('rls.strategy', 'transaction');
+};
+
 $endpoints = [];
 
-foreach (EndpointConfig::matrix() as $cfg) {
+foreach ($matrix as $cfg) {
     // Config 6: unsafe by construction — flag, never measure single-client. Emitted before the
     // backend-availability check below: it is a static flag that needs no live connection, so it
     // must render even when PgBouncer is down (otherwise the informational row silently vanishes).
@@ -176,23 +204,8 @@ foreach (EndpointConfig::matrix() as $cfg) {
 
     try {
         foreach ($ks as $k) {
-            $endpoint = new Endpoint($app, $tables, $k);
+            [$control, $treatment, $overhead] = $measure(new Endpoint($app, $tables, $k), $cfg);
 
-            $control = Stats::summarize($runner->measure(
-                static fn(Variant $v) => $endpoint->run($cfg, 'control'),
-                Variant::Control,
-                $endpointWarmup,
-                $endpointIterations,
-            ))['mean_us'];
-
-            $treatment = Stats::summarize($runner->measure(
-                static fn(Variant $v) => $endpoint->run($cfg, 'treatment'),
-                Variant::Treatment,
-                $endpointWarmup,
-                $endpointIterations,
-            ))['mean_us'];
-
-            $overhead = $treatment - $control;
             $endpoints[] = [
                 'label' => $cfg->label,
                 'connection' => $cfg->connectionName,
@@ -207,12 +220,7 @@ foreach (EndpointConfig::matrix() as $cfg) {
             ];
         }
     } finally {
-        // Reset the session context WHILE rls.strategy is still 'session' (else the reset is a
-        // silent no-op and the GUC leaks), THEN restore the default connection + strategy.
-        $rls->forget();
-        $app->make('db')->connection($cfg->connectionName)->resetSessionContext();
-        $app['config']->set('database.default', 'pgsql');
-        $app['config']->set('rls.strategy', 'transaction');
+        $restore($cfg->connectionName);
     }
 }
 
@@ -239,28 +247,19 @@ if ($toxiproxy->available()) {
     if ($dataPathOk) {
         $toxiproxyAvailable = true;
 
-        foreach (array_slice(EndpointConfig::matrix(), 0, 3) as $cfg) {
+        // The three direct configs (selected by connection, not array position, so a matrix
+        // reorder can't silently pick the wrong cells).
+        $directConfigs = array_filter($matrix, static fn(EndpointConfig $cfg): bool => $cfg->connectionName === 'pgsql');
+
+        foreach ($directConfigs as $cfg) {
             $app['config']->set('database.default', 'pgsql_delayed');
             $app['config']->set('rls.strategy', $cfg->strategy);
+            $endpoint = new Endpoint($app, $tables, 10);
 
             try {
                 foreach ($sweepPoints as [$ms, $jitter]) {
                     $toxiproxy->setLatency('postgres', $ms, $jitter);
-                    $endpoint = new Endpoint($app, $tables, 10);
-
-                    $control = Stats::summarize($runner->measure(
-                        static fn(Variant $v) => $endpoint->run($cfg, 'control'),
-                        Variant::Control,
-                        $endpointWarmup,
-                        $endpointIterations,
-                    ))['mean_us'];
-
-                    $treatment = Stats::summarize($runner->measure(
-                        static fn(Variant $v) => $endpoint->run($cfg, 'treatment'),
-                        Variant::Treatment,
-                        $endpointWarmup,
-                        $endpointIterations,
-                    ))['mean_us'];
+                    [$control, $treatment, $overhead] = $measure($endpoint, $cfg);
 
                     $latencySweep[] = [
                         'label' => $cfg->label,
@@ -269,14 +268,11 @@ if ($toxiproxy->available()) {
                         'jitter_ms' => $jitter,
                         'control_us' => $control,
                         'treatment_us' => $treatment,
-                        'overhead_endpoint_us' => $treatment - $control,
+                        'overhead_endpoint_us' => $overhead,
                     ];
                 }
             } finally {
-                $rls->forget();
-                $app->make('db')->connection('pgsql_delayed')->resetSessionContext();
-                $app['config']->set('database.default', 'pgsql');
-                $app['config']->set('rls.strategy', 'transaction');
+                $restore('pgsql_delayed');
             }
         }
 

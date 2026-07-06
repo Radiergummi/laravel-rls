@@ -21,41 +21,48 @@ final class Endpoint
         private readonly int $k,
     ) {}
 
-    public function run(EndpointConfig $cfg, string $variant): void
+    public function run(EndpointConfig $cfg, Variant $variant): void
     {
-        if ($variant === 'control') {
-            for ($i = 0; $i < $this->k; $i++) {
-                $this->db()->select(
-                    'select * from ' . TableSet::CONTROL . ' where id = ? and tenant_id = ?',
-                    [$this->tables->probeRowId, $this->tables->probeTenantId],
-                );
-            }
+        // Resolve the active connection once per timed op — not per query — so container/resolver
+        // lookups don't inflate the very quantity we measure.
+        $connection = $this->db();
+
+        if ($variant === Variant::Control) {
+            $this->repeat(
+                $connection,
+                'select * from ' . TableSet::CONTROL . ' where id = ? and tenant_id = ?',
+                [$this->tables->probeRowId, $this->tables->probeTenantId],
+            );
 
             return;
         }
 
+        $sql = 'select * from ' . TableSet::TREATMENT . ' where id = ?';
+        $bindings = [$this->tables->probeRowId];
+
         $this->rls()->isolateTo(
             ['tenant_id' => $this->tables->probeTenantId],
-            function () use ($cfg): void {
-                $selects = function (): void {
-                    for ($i = 0; $i < $this->k; $i++) {
-                        $this->db()->select(
-                            'select * from ' . TableSet::TREATMENT . ' where id = ?',
-                            [$this->tables->probeRowId],
-                        );
-                    }
-                };
-
+            function () use ($cfg, $connection, $sql, $bindings): void {
                 // request boundary: one transaction wraps all K selects (context injected once at
                 // BEGIN). Otherwise each standalone select auto-wraps (wrap) or runs on the session
                 // GUC (session).
-                if ($cfg->oneTransaction) {
-                    $this->db()->transaction($selects);
-                } else {
-                    $selects();
-                }
+                $cfg->oneTransaction
+                    ? $connection->transaction(fn() => $this->repeat($connection, $sql, $bindings))
+                    : $this->repeat($connection, $sql, $bindings);
             },
         );
+    }
+
+    /**
+     * Run the same select K times on the given connection (the timed unit of work).
+     *
+     * @param array<int, mixed> $bindings
+     */
+    private function repeat(Connection $connection, string $sql, array $bindings): void
+    {
+        for ($i = 0; $i < $this->k; $i++) {
+            $connection->select($sql, $bindings);
+        }
     }
 
     public function treatmentIsCorrect(EndpointConfig $cfg): bool
