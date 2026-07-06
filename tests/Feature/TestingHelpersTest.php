@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Tests\Feature;
 
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
+use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Testing\InteractsWithRls;
 use Radiergummi\LaravelRls\Tests\TestCase;
+use RuntimeException;
 
 #[TestDox('Testing Helpers')]
 class TestingHelpersTest extends TestCase
@@ -24,6 +27,10 @@ class TestingHelpersTest extends TestCase
         $this->assertTableIsolated('gadgets');
     }
 
+    /**
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
     #[Test]
     #[TestDox('isolateTo() scopes reads')]
     public function isolate_to_scopes_reads(): void
@@ -50,7 +57,7 @@ class TestingHelpersTest extends TestCase
     {
         parent::setUp();
 
-        Schema::create('gadgets', function ($table) {
+        Schema::create('gadgets', static function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id');
             $table->isolatedBy('tenant_id');

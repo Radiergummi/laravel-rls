@@ -17,11 +17,12 @@ namespace Radiergummi\LaravelRls\Listeners;
 use Illuminate\Container\Attributes\Log;
 use Psr\Log\LoggerInterface;
 use Radiergummi\LaravelRls\Events\RlsBypassed;
+use Radiergummi\LaravelRls\RlsServiceProvider;
 
 readonly class RlsBypassedListener
 {
     public function __construct(
-        #[Log('rls')]
+        #[Log(RlsServiceProvider::RLS_LOG_CHANNEL)]
         private LoggerInterface $logger,
     ) {}
 

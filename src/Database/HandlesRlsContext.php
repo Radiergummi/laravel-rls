@@ -85,7 +85,7 @@ trait HandlesRlsContext
         $this->statement("select set_config(?, ?, {$flag})", [$name, $value]);
 
         // Session GUCs live per backend session. A read/write split has a separate read PDO (the
-        // replica) that plain SELECTs route to, so the context must be mirrored there too.
+        // replica) that plain SELECT's route to, so the context must be mirrored there too.
         // Transaction-local GUCs need no mirroring: in-transaction reads use the Write PDO.
         if (!$local && $this->hasDistinctReadPdo()) {
             $this->select(
@@ -110,8 +110,6 @@ trait HandlesRlsContext
      * and silently mis-scoping every row. null stays '' on purpose (the fail-closed sentinel).
      *
      * @param null|scalar $value
-     *
-     * @throws InvalidArgumentException
      */
     private function stringifyGucValue(mixed $value): string
     {
@@ -216,10 +214,11 @@ trait HandlesRlsContext
             return;
         }
 
-        $manager = app('rls');
+        $manager = app(RlsManager::class);
+        assert($manager instanceof RlsManager);
 
         // Bypass runs on the admin connection with the in-flight flag set; the guard stands down for
-        // its duration (there is no bypass context on the stack any more).
+        // its duration (there is no bypass context on the stack anymore).
         if ($manager->isBypassing()) {
             return;
         }
@@ -240,7 +239,7 @@ trait HandlesRlsContext
     private function queryTouchesManagedTable(string $query): bool
     {
         foreach ($this->managedTableNames() as $table) {
-            if (str_contains($query, '"' . $table . '"')) {
+            if (str_contains($query, sprintf('"%s"', $table))) {
                 return true;
             }
         }
@@ -256,19 +255,25 @@ trait HandlesRlsContext
      */
     private function managedTableNames(): array
     {
-        $sql = 'select c.relname as name from pg_class c '
-            . 'join pg_namespace n on n.oid = c.relnamespace '
-            . "where c.relrowsecurity and c.relkind = 'r' and n.nspname = current_schema()";
-
         $this->inRlsGuard = true;
 
         try {
-            $rows = $this->select($sql);
+            /** @var list<object{name: string}> $rows */
+            $rows = $this->select(
+                'select c.relname as name from pg_class c '
+                . 'join pg_namespace n on n.oid = c.relnamespace '
+                . "where c.relrowsecurity and c.relkind = 'r' and n.nspname = current_schema()",
+            );
         } finally {
             $this->inRlsGuard = false;
         }
 
-        return array_values(array_map(static fn($row) => $row->name, $rows));
+        return array_values(
+            array_map(
+                static fn(object $row): string => $row->name,
+                $rows,
+            ),
+        );
     }
 
     protected function shouldWrapForRls(): bool
@@ -276,6 +281,6 @@ trait HandlesRlsContext
         return $this->transactionLevel() === 0
             && config('rls.strategy', 'transaction') === 'transaction'
             && config('rls.boundary', 'wrap') === 'wrap'
-            && app('rls')->hasContext();
+            && app(RlsManager::class)->hasContext();
     }
 }

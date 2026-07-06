@@ -14,6 +14,7 @@ use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Support\RlsFunctions;
 use Radiergummi\LaravelRls\Tests\WithTestingUtils;
 use RuntimeException;
+use stdClass;
 
 /**
  * A read/write-split connection has a separate read PDO (the replica) that plain SELECT's route to
@@ -32,10 +33,21 @@ class ReadReplicaContextTest extends TestCase
     #[TestDox('Read and write queries use distinct backends')]
     public function read_and_write_use_distinct_backends(): void
     {
-        $readPid = DB::select('select pg_backend_pid() as p')[0]->p;
-        $writePid = DB::select('select pg_backend_pid() as p', [], false)[0]->p;
+        $readPid = DB::selectOne('select pg_backend_pid() as value');
+        $this->assertIsObject($readPid);
+        $this->assertInstanceOf(stdClass::class, $readPid);
+        $this->assertObjectHasProperty('value', $readPid);
+        $this->assertIsInt($readPid->value);
+        $writePid = DB::selectOne('select pg_backend_pid() as value', useReadPdo: false);
+        $this->assertIsObject($writePid);
+        $this->assertInstanceOf(stdClass::class, $writePid);
+        $this->assertObjectHasProperty('value', $writePid);
 
-        $this->assertNotSame($readPid, $writePid, 'expected a real read/write split');
+        $this->assertNotSame(
+            $readPid->value,
+            $writePid->value,
+            'expected a real read/write split',
+        );
     }
 
     /**

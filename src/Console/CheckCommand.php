@@ -23,6 +23,7 @@ class CheckCommand extends Command
         // name, so any declared isolation key (org_id, region, ...) is audited, not
         // just tenant_id. A table with *no* RLS setup at all has no agnostic
         // signal and is therefore out of scope for this audit.
+        /** @var list<object{name: string}> $tables */
         $tables = DB::select(
             <<<'SQL'
                 select distinct c.relname as name
@@ -51,6 +52,7 @@ class CheckCommand extends Command
             assert($enablementResult instanceof stdClass || $enablementResult === null);
             $enabled = $enablementResult?->relrowsecurity;
 
+            /** @var object{count: int} $policiesResult */
             $policiesResult = DB::selectOne(
                 'select count(*) as count from pg_policies where tablename = ?',
                 [$table->name],

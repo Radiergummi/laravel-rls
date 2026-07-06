@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Context;
 
+use function array_key_exists;
+
 final readonly class RlsContext
 {
     /**
-     * @param array<array-key, null|scalar> $values
+     * @param array<string, null|scalar> $values
      */
     private function __construct(
         private array $values,
     ) {}
 
     /**
-     * @param array<array-key, null|scalar> $values
+     * @param array<string, null|scalar> $values
      */
     public static function make(array $values): self
     {
@@ -22,7 +24,7 @@ final readonly class RlsContext
     }
 
     /**
-     * @return array<array-key, null|scalar>
+     * @return array<string, null|scalar>
      */
     public function values(): array
     {
@@ -43,10 +45,10 @@ final readonly class RlsContext
     }
 
     /**
-     * @param array<array-key, null|scalar> $values
+     * @param array<string, null|scalar> $values
      */
     public function with(array $values): self
     {
-        return new self(array_merge($this->values, $values));
+        return new self([...$this->values, ...$values]);
     }
 }

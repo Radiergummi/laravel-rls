@@ -30,8 +30,8 @@ class WithDefaultTest extends TestCase
         $this->assertInstanceOf(stdClass::class, $defaults);
 
         $default = $defaults->column_default;
-
         $this->assertNotNull($default, 'expected a column default on the scoping column');
+        $this->assertIsString($default);
         $this->assertStringContainsString('rls.context', $default);
     }
 

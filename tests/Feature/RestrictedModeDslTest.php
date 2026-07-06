@@ -40,6 +40,7 @@ class RestrictedModeDslTest extends TestCase
 
         $this->assertIsObject($policy);
         $this->assertInstanceOf(stdClass::class, $policy);
+        $this->assertIsString($policy->qual);
         $this->assertStringContainsString('rls.context', $policy->qual);
         $this->assertStringNotContainsStringIgnoringCase('bypass', $policy->qual);
     }

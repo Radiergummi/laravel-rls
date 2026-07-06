@@ -42,7 +42,9 @@ class PolicyDslTest extends TestCase
 
         $this->assertTrue($policies->has('widgets_access'));
         $this->assertTrue($policies->has('widgets_tenant_id_isolation'));
+        $this->assertInstanceOf(stdClass::class, $policies['widgets_access']);
         $this->assertSame('PERMISSIVE', $policies['widgets_access']->permissive);
+        $this->assertInstanceOf(stdClass::class, $policies['widgets_tenant_id_isolation']);
         $this->assertSame('RESTRICTIVE', $policies['widgets_tenant_id_isolation']->permissive);
     }
 
@@ -57,6 +59,7 @@ class PolicyDslTest extends TestCase
 
         $this->assertIsObject($policy);
         $this->assertInstanceOf(stdClass::class, $policy);
+        $this->assertIsString($policy->qual);
 
         // Equality-only: index-friendly. The `rls.bypass() OR` clause is gone — it would defeat the
         // scoping-column index and force a Seq Scan on every read.

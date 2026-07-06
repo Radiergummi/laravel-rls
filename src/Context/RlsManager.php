@@ -17,6 +17,7 @@ use Radiergummi\LaravelRls\Events\RlsBypassed;
 use Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Exceptions\RlsContextLeaked;
+use Radiergummi\LaravelRls\RlsServiceProvider;
 use RuntimeException;
 
 use function config;
@@ -60,7 +61,7 @@ class RlsManager
 
     public function __construct(
         private readonly Repository $context,
-        #[Log('rls')]
+        #[Log(RlsServiceProvider::RLS_LOG_CHANNEL)]
         private readonly LoggerInterface $logger,
         private readonly ?Dispatcher $events = null,
     ) {}
@@ -175,10 +176,10 @@ class RlsManager
     /**
      * Validate context values against the declared schema before they leave PHP.
      *
-     * A malformed value (e.g., a non-UUID for an uuid isolation key) would otherwise reach Postgres and
-     * throw on every query — a cluster-wide failure.
+     * A malformed value (e.g., a non-UUID for an uuid isolation key) would otherwise reach Postgres
+     * and throw on every query — a cluster-wide failure.
      *
-     * @param array<string, mixed> $values
+     * @param array<string, null|scalar> $values
      *
      * @throws InvalidContextValue
      */
@@ -235,7 +236,7 @@ class RlsManager
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<string, null|scalar>
      */
     public function context(): array
     {

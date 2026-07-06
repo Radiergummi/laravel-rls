@@ -6,6 +6,7 @@ namespace Radiergummi\LaravelRls\Tests\Feature;
 
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Facades\Event;
+use InvalidArgumentException;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
@@ -42,6 +43,7 @@ class BypassObservabilityTest extends TestCase
     }
 
     /**
+     * @throws InvalidArgumentException
      * @throws InvalidContextValue
      * @throws RuntimeException
      */
@@ -50,11 +52,8 @@ class BypassObservabilityTest extends TestCase
     public function bypass_is_logged_with_its_reason(): void
     {
         $logger = Mockery::spy(LoggerInterface::class);
-        $logManager = $this->app->make(LogManager::class);
+        $logManager = app(LogManager::class);
 
-        // extend() only fires for a channel whose configured driver matches the extension name, so
-        // the 'rls' channel must exist in config or channel('rls') falls back to the emergency
-        // logger and the spy is never consulted.
         config(['logging.channels.rls' => ['driver' => 'rls']]);
         $logManager->forgetChannel('rls');
         $logManager->extend('rls', fn() => $logger);

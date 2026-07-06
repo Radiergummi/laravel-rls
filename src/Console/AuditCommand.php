@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 
 use function assert;
@@ -18,8 +19,12 @@ class AuditCommand extends Command
 
     protected $description = 'Report every RLS bypass call site so bypass stays visible and reviewable';
 
+    /**
+     * @throws FileNotFoundException
+     */
     public function handle(): int
     {
+        /** @var list<string> $paths */
         $paths = $this->option('path') ?: [base_path('app')];
         assert(is_array($paths));
         $pattern = '/(?:Rls::|\$?this->|->)\s*(withoutIsolation|system)\s*\(/';

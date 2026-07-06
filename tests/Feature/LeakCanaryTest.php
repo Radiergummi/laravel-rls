@@ -25,18 +25,18 @@ use RuntimeException;
 class LeakCanaryTest extends TestCase
 {
     /**
+     * @throws BindingResolutionException
      * @throws ExpectationFailedException
      * @throws InvalidContextValue
      * @throws RlsContextLeaked
      * @throws RuntimeException
-     * @throws BindingResolutionException
      */
     #[Test]
     #[TestDox('Logs a critical message and clears a leaked context')]
     public function logs_and_clears_a_leaked_context(): void
     {
         $logger = Mockery::spy(LoggerInterface::class);
-        $logManager = $this->app->make(LogManager::class);
+        $logManager = app(LogManager::class);
 
         // extend() only fires for a channel whose configured driver matches the extension name, so
         // the 'rls' channel must exist in config or channel('rls') falls back to the emergency
@@ -47,8 +47,8 @@ class LeakCanaryTest extends TestCase
 
         // The manager is a singleton built at boot, so it captured the real 'rls' channel logger
         // before the swap above. Drop it and rebuild so it resolves the mocked channel.
-        $this->app->forgetInstance(RlsManager::class);
-        $manager = $this->app->make(RlsManager::class);
+        app()->forgetInstance(RlsManager::class);
+        $manager = app(RlsManager::class);
 
         $manager->isolateTo(['tenant_id' => 'leaked-from-previous-job']);
         $manager->checkForLeak('job');

@@ -34,6 +34,8 @@ use function is_string;
 
 class RlsServiceProvider extends ServiceProvider
 {
+    public const RLS_LOG_CHANNEL = 'rls';
+
     /**
      * The pgsql resolver we registered, tracked, so we recognize our own.
      *
@@ -49,6 +51,10 @@ class RlsServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->environment('testing')) {
+            $this->app->resolveEnvironmentUsing($this->app->environment(...));
+        }
+
         $this->registerConnectionResolver();
         $this->registerLogChannel();
 
@@ -58,8 +64,9 @@ class RlsServiceProvider extends ServiceProvider
             $connection = $this->app->make(DatabaseManager::class)->connection();
 
             // Capability check (not instanceof) so composed connections built on other pgsql
-            // packages (e.g., tpetry) are recognized too. applyRlsContext() self-guards per
-            // strategy (no-op for the transaction strategy outside a transaction).
+            // packages (e.g., tpetry/laravel-postgresql-enhanced) are recognized too.
+            // applyRlsContext() self-guards per strategy (no-op for the transaction strategy
+            // outside a transaction).
             if (method_exists($connection, 'applyRlsContext')) {
                 $connection->applyRlsContext();
             }
@@ -156,12 +163,12 @@ class RlsServiceProvider extends ServiceProvider
      */
     private function registerLogChannel(): void
     {
-        if (config('logging.channels.rls') !== null) {
+        if (config('logging.channels.' . self::RLS_LOG_CHANNEL) !== null) {
             return;
         }
 
         config([
-            'logging.channels.rls' => [
+            'logging.channels.' . self::RLS_LOG_CHANNEL => [
                 'driver' => 'stack',
                 'channels' => [config('logging.default', 'stack')],
                 'ignore_exceptions' => false,

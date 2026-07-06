@@ -106,6 +106,7 @@ class JsonReporterTest extends TestCase
 
         $this->assertIsArray($roundTrip);
         $this->assertArrayHasKey('env', $roundTrip);
+        $this->assertIsArray($roundTrip['env']);
         $this->assertArrayHasKey('git_commit', $roundTrip['env']);
         $this->assertSame('abc123', $roundTrip['env']['git_commit']);
         unlink($path);

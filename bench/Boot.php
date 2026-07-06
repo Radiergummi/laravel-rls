@@ -6,6 +6,7 @@ namespace Radiergummi\LaravelRls\Bench;
 
 use Illuminate\Contracts\Foundation\Application;
 use Orchestra\Testbench\Foundation\Application as Testbench;
+use PDO;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 
 final class Boot
@@ -59,6 +60,20 @@ final class BootApplication extends Testbench
         $app['config']->set('database.default', 'pgsql');
         $app['config']->set('database.connections.pgsql', $connection('rls_app'));
         $app['config']->set('database.connections.pgsql_admin', $connection('rls_bypass'));
+        $app['config']->set('database.connections.pgsql_pgbouncer', [
+            ...$connection('rls_app'),
+            'port' => 6432,
+            // Mirror PgBouncerTest exactly: transaction pooling can't carry server-side prepared
+            // statements, and the local pooler listener offers no TLS.
+            'sslmode' => 'disable',
+            'options' => [PDO::ATTR_EMULATE_PREPARES => true],
+        ]);
+        $app['config']->set('database.connections.pgsql_delayed', [
+            ...$connection('rls_app'),
+            'port' => 5433, // Toxiproxy proxy listen port
+            'sslmode' => 'disable',
+            'options' => [PDO::ATTR_EMULATE_PREPARES => true],
+        ]);
         $app['config']->set('rls.role_model', 'owner');
         $app['config']->set('rls.admin_connection', 'pgsql_admin');
     }

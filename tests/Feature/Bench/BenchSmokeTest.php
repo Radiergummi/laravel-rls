@@ -51,6 +51,8 @@ class BenchSmokeTest extends TestCase
         $this->assertArrayHasKey('env', $document);
         $this->assertNotEmpty($document['cells']);
         $this->assertNotEmpty($document['explain']);
+        $this->assertIsArray($document['explain']);
+        $this->assertIsArray($document['explain'][0]);
         $this->assertArrayHasKey('scan_type', $document['explain'][0]);
 
         unlink($json);

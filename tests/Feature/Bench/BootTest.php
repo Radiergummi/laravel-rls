@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Feature\Bench;
 
 use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\Attributes\Test;
@@ -47,5 +48,19 @@ class BootTest extends TestCase
                 connectionName: 'pgsql_admin',
             ),
         );
+    }
+
+    #[Test]
+    #[TestDox('Boot::app() registers the pgbouncer and delayed RLS connections')]
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function registers_endpoint_connections(): void
+    {
+        Boot::app();
+
+        // Resolving a connection builds it lazily (no socket opened until a query), so these
+        // assertions hold even when :6432 / :5433 are down.
+        $this->assertInstanceOf(RlsPostgresConnection::class, DB::connection('pgsql_pgbouncer'));
+        $this->assertInstanceOf(RlsPostgresConnection::class, DB::connection('pgsql_delayed'));
     }
 }

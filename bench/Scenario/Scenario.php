@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Bench\Scenario;
 
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Connection;
 use Radiergummi\LaravelRls\Bench\TableSet;
@@ -48,8 +49,11 @@ abstract class Scenario
         return $this->app->make('db')->connection();
     }
 
+    /**
+     * @throws BindingResolutionException
+     */
     protected function rls(): RlsManager
     {
-        return $this->app->make('rls');
+        return $this->app->make(RlsManager::class);
     }
 }

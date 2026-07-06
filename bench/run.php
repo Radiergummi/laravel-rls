@@ -16,6 +16,7 @@ use Radiergummi\LaravelRls\Bench\Schema;
 use Radiergummi\LaravelRls\Bench\Stats;
 use Radiergummi\LaravelRls\Bench\TableSet;
 use Radiergummi\LaravelRls\Bench\Variant;
+use Radiergummi\LaravelRls\Context\RlsManager;
 
 require __DIR__ . '/../vendor/autoload.php';
 
@@ -30,7 +31,7 @@ $app = Boot::app();
 $schema = new Schema($app);
 $runner = new Runner();
 $db = $app->make('db')->connection();
-$rls = $app->make('rls');
+$rls = $app->make(RlsManager::class);
 
 $cells = [];
 $explain = [];

@@ -81,7 +81,7 @@ trait InteractsWithRls
                 'select permissive from pg_policies where tablename = ?',
                 [$table],
             ),
-        )->contains(fn($policy) => $policy->permissive === 'RESTRICTIVE');
+        )->contains(fn(stdClass $policy) => $policy->permissive === 'RESTRICTIVE');
 
         $this->assertTrue(
             $hasRestrictive,
