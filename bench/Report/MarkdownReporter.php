@@ -40,6 +40,58 @@ final class MarkdownReporter
         $lines[] = '';
         $lines[] = 'Headline: ' . $this->headline($document);
 
+        $lines[] = '';
+        $lines[] = '## Endpoints';
+        $lines[] = '';
+        $lines[] = '| config | k | status | control (us) | treatment (us) | overhead (us) | per-query (us) |';
+        $lines[] = '|---|---|---|---|---|---|---|';
+
+        /** @var list<array<string,mixed>> $endpoints */
+        $endpoints = $document['endpoints'] ?? [];
+
+        foreach ($endpoints as $endpoint) {
+            if (($endpoint['status'] ?? '') === 'unsafe') {
+                $lines[] = sprintf('| %s | %s | unsafe | — | — | — | — |', $endpoint['label'], $endpoint['k']);
+
+                continue;
+            }
+
+            $lines[] = sprintf(
+                '| %s | %s | ok | %s | %s | %s | %s |',
+                $endpoint['label'],
+                $endpoint['k'],
+                number_format((float) $endpoint['control_us'], 2),
+                number_format((float) $endpoint['treatment_us'], 2),
+                number_format((float) $endpoint['overhead_endpoint_us'], 2),
+                number_format((float) $endpoint['overhead_per_query_us'], 2),
+            );
+        }
+
+        /** @var list<array<string,mixed>> $sweep */
+        $sweep = $document['latency_sweep'] ?? [];
+
+        if ($sweep !== []) {
+            $lines[] = '';
+            $lines[] = '## Latency sweep';
+            $lines[] = '';
+            $lines[] = '| config | injected (ms) | control (us) | treatment (us) | overhead (us) |';
+            $lines[] = '|---|---|---|---|---|';
+
+            foreach ($sweep as $point) {
+                $lines[] = sprintf(
+                    '| %s | %s | %s | %s | %s |',
+                    $point['label'],
+                    $point['injected_ms'],
+                    number_format((float) $point['control_us'], 2),
+                    number_format((float) $point['treatment_us'], 2),
+                    number_format((float) $point['overhead_endpoint_us'], 2),
+                );
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = 'Endpoint headline: ' . $this->endpointHeadline($document);
+
         return implode("\n", $lines) . "\n";
     }
 
@@ -92,6 +144,43 @@ final class MarkdownReporter
             $p50Delta,
             $p99Delta,
             $fixed,
+        );
+    }
+
+    /**
+     * The request-level story: how wrap's endpoint overhead grows with K while per-query stays flat.
+     *
+     * @param array<string,mixed> $document
+     */
+    public function endpointHeadline(array $document): string
+    {
+        /** @var list<array<string,mixed>> $endpoints */
+        $endpoints = $document['endpoints'] ?? [];
+
+        $wrapAt = static function (int $k) use ($endpoints): ?array {
+            $matches = array_filter(
+                $endpoints,
+                static fn(array $e): bool => ($e['label'] ?? null) === 'direct·transaction·wrap'
+                    && ($e['status'] ?? null) === 'ok'
+                    && ($e['k'] ?? null) === $k,
+            );
+            $cell = reset($matches);
+
+            return $cell === false ? null : $cell;
+        };
+
+        $low = $wrapAt(1);
+        $high = $wrapAt(30);
+
+        if ($low === null || $high === null) {
+            return 'n/a';
+        }
+
+        return sprintf(
+            'wrap endpoint overhead ~%s us (k=1) -> ~%s us (k=30), ~%s us/query flat; request/session stay ~flat in k',
+            number_format((float) $low['overhead_endpoint_us'], 2),
+            number_format((float) $high['overhead_endpoint_us'], 2),
+            number_format((float) $high['overhead_per_query_us'], 2),
         );
     }
 

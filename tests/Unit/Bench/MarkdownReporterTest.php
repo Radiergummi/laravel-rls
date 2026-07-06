@@ -89,4 +89,48 @@ class MarkdownReporterTest extends TestCase
         $this->assertStringContainsString('n/a', $headline);
         $this->assertStringNotContainsString('0.00', $headline);
     }
+
+    #[Test]
+    #[TestDox('renders endpoints table, sweep table, and endpoint headline')]
+    public function renders_endpoints_and_sweep(): void
+    {
+        $document = [
+            'cells' => [],
+            'params' => ['scales' => ['100k']],
+            'amortization' => [],
+            'endpoints' => [
+                [
+                    'label' => 'direct·transaction·wrap', 'connection' => 'pgsql',
+                    'strategy' => 'transaction', 'boundary' => 'wrap', 'k' => 1, 'status' => 'ok',
+                    'control_us' => 10.0, 'treatment_us' => 14.0,
+                    'overhead_endpoint_us' => 4.0, 'overhead_per_query_us' => 4.0,
+                ],
+                [
+                    'label' => 'direct·transaction·wrap', 'connection' => 'pgsql',
+                    'strategy' => 'transaction', 'boundary' => 'wrap', 'k' => 30, 'status' => 'ok',
+                    'control_us' => 300.0, 'treatment_us' => 420.0,
+                    'overhead_endpoint_us' => 120.0, 'overhead_per_query_us' => 4.0,
+                ],
+                [
+                    'label' => 'pgbouncer·session', 'connection' => 'pgsql_pgbouncer',
+                    'strategy' => 'session', 'boundary' => '—', 'k' => 10, 'status' => 'unsafe',
+                    'note' => 'session GUC does not survive PgBouncer transaction pooling',
+                ],
+            ],
+            'latency_sweep' => [
+                [
+                    'label' => 'direct·transaction·wrap', 'k' => 10, 'injected_ms' => 5, 'jitter_ms' => 1,
+                    'control_us' => 50.0, 'treatment_us' => 90.0, 'overhead_endpoint_us' => 40.0,
+                ],
+            ],
+        ];
+
+        $markdown = (new MarkdownReporter())->render($document);
+
+        $this->assertStringContainsString('## Endpoints', $markdown);
+        $this->assertStringContainsString('direct·transaction·wrap', $markdown);
+        $this->assertStringContainsString('unsafe', $markdown);
+        $this->assertStringContainsString('## Latency sweep', $markdown);
+        $this->assertStringContainsString('Endpoint headline:', $markdown);
+    }
 }
