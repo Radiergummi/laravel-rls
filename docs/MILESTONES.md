@@ -1,7 +1,7 @@
 # Milestones — from "proven to work" to "proven good"
 
-The PoC answered *does the idea work?* — yes, 97 tests against real Postgres 18,
-including the hard cases (PgBouncer transaction pooling, live `queue:work`, two
+The PoC answered *does the idea work?* — yes, now 122 tests against real Postgres
+18, including the hard cases (PgBouncer transaction pooling, live `queue:work`, two
 real roles, read replicas, foreign connection package). What it has **not**
 answered is whether the idea is *good* in the production sense:
 
@@ -20,7 +20,23 @@ document is the post-PoC, pre-release track.
 
 ---
 
+## Status (as of 2026-07-07)
+
+`v0.0.1` is tagged and published on Packagist. The PoC is now at **122 core
+tests**; the security work adds more on top (see below).
+
+| Milestone | State | What's done / what's left |
+|---|---|---|
+| **A — Performance harness** | ✅ **done** | `composer bench`, committed `bench/baseline.json`, per-query + endpoint + latency-sweep cells, `EXPLAIN` evidence, and a README Performance section. |
+| **B — Adversarial security suite** | 🚧 **in progress** | `tests/Security/` scaffolded. Written: bypass abuse (cat 2), malicious values (cat 6 + injection value of 3), context-stack integrity (cat 1, infra-free subset), raw-SQL boundary core (cat 3). Left: cross-worker leakage (cat 1 infra), policy compounding (4), privilege matrix (5), migration/DDL (7), covert channels (8). See [`tests/Security/README.md`](../tests/Security/README.md). |
+| **C — Version-matrix CI** | 🟡 **partial** | Minimal CI is green (`.github/workflows/ci.yml`: PHP 8.2–8.4 × Postgres 18, PHPStan, Pint). Left: the full PG × PHP × Laravel matrix, `prefer-lowest`, the PgBouncer job, and the perf-regression job. |
+
+---
+
 ## Milestone A — Performance & load-testing harness
+
+> **Status: ✅ done.** Harness in `bench/`, baseline committed, results written up
+> in the README Performance section.
 
 **Goal:** a data-backed answer to *"what does RLS-via-this-library cost, and is it
 fast enough?"* — reported with proper statistics (mean, stddev, and
@@ -99,6 +115,12 @@ table, no scoping at all) to attribute the cost between "RLS predicate" and
 ---
 
 ## Milestone B — Adversarial security & edge-case suite
+
+> **Status: 🚧 in progress.** `tests/Security/` scaffolded with a base case, a
+> category map, and stub files. Threat categories 2, 6, the infra-free subset of
+> 1, and the core of 3 are written and green; categories 4, 5, 7, 8 and the
+> infra-dependent parts of 1 and 3 remain. Per-category status lives in
+> [`tests/Security/README.md`](../tests/Security/README.md).
 
 **Goal:** a *large* suite that actively tries to break isolation across every edge
 case and compounding condition, turning "we believe it holds" into "we tried to
@@ -180,6 +202,11 @@ named for the threat and cross-referenced to the design threat model.
 ---
 
 ## Milestone C — Version-matrix CI (GitHub Actions)
+
+> **Status: 🟡 partial.** `.github/workflows/ci.yml` runs green on every push:
+> tests on PHP 8.2–8.4 against a single Postgres 18 service, plus PHPStan and
+> Pint. The full matrix below (multiple PG versions, Laravel lines,
+> `prefer-lowest`), the PgBouncer job, and the perf-regression job are still to do.
 
 **Goal:** every push proves the library green across the *supported* matrix, not
 just the one combination on the author's laptop. This is the substrate that keeps
