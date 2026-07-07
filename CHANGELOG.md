@@ -9,6 +9,14 @@ reaches `1.0.0`. While on `0.x`, minor versions may contain breaking changes.
 
 ### Fixed
 
+- **Context now reaches jobs on long-lived (daemon) queue workers and Octane, not
+  only under `queue:work --once`.** `RlsManager` (a singleton) captured the
+  Context repository at construction, but that repository is a *scoped* binding
+  the worker/Octane reset between jobs/requests — so the manager read a stale,
+  unhydrated repository and every scoped query fell back to zero rows. The manager
+  now resolves the live repository from the container on each access. The failure
+  was fail-closed (no cross-tenant leak), but it broke scoped work on the most
+  common deployment.
 - Compound isolation keys now work: a table with two or more `isolatedBy()` calls
   no longer fails to migrate on a duplicate `"<table>_access"` permissive policy.
   The shared base policy is created idempotently (one per table). This is the

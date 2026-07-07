@@ -9,6 +9,7 @@ use Closure;
 use Illuminate\Container\Attributes\Log;
 use Illuminate\Container\Attributes\Singleton;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Log\Context\Repository;
 use Illuminate\Support\Str;
@@ -60,11 +61,22 @@ class RlsManager
     private bool $bypassing = false;
 
     public function __construct(
-        private readonly Repository $context,
+        private readonly Container $container,
         #[Log(RlsServiceProvider::RLS_LOG_CHANNEL)]
         private readonly LoggerInterface $logger,
         private readonly ?Dispatcher $events = null,
     ) {}
+
+    /**
+     * The live Context repository. Resolved on each access rather than captured,
+     * because it is a *scoped* binding: a queue daemon and Octane reset scoped
+     * instances between jobs/requests, so a reference held by this singleton
+     * would go stale and read a repository the framework no longer hydrates.
+     */
+    private function repository(): Repository
+    {
+        return $this->container->make(Repository::class);
+    }
 
     /**
      * Declare the app's isolation keys (opt in sugar).
@@ -123,7 +135,7 @@ class RlsManager
     private function stack(): array
     {
         /** @var list<RlsContext> */
-        return $this->context->get(self::KEY, []);
+        return $this->repository()->get(self::KEY, []);
     }
 
     /**
@@ -169,7 +181,7 @@ class RlsManager
     public function push(RlsContext $context): void
     {
         $this->validate($context->values());
-        $this->context->push(self::KEY, $context);
+        $this->repository()->push(self::KEY, $context);
         $this->afterChange();
     }
 
@@ -268,7 +280,7 @@ class RlsManager
     public function pop(): void
     {
         if ($this->hasContext()) {
-            $this->context->pop(self::KEY);
+            $this->repository()->pop(self::KEY);
         }
         $this->afterChange();
     }
@@ -413,7 +425,7 @@ class RlsManager
 
     public function forget(): void
     {
-        $this->context->forget(self::KEY);
+        $this->repository()->forget(self::KEY);
         $this->afterChange();
     }
 }

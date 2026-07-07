@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Tests\Unit;
 
+use Illuminate\Container\Container;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Log\Context\Repository;
 use PHPUnit\Framework\Attributes\Test;
@@ -30,9 +31,15 @@ class RlsManagerTest extends TestCase
         $this->assertSame([], $manager->context());
     }
 
-    private function manager(): RlsManager
+    private function manager(?Dispatcher $events = null): RlsManager
     {
-        return new RlsManager(new Repository(new Dispatcher()), new NullLogger());
+        // A container holding a fixed Context repository: the manager resolves the
+        // repository through the container (so it tracks scope resets in a real
+        // app), which here just returns this one instance for the whole test.
+        $container = new Container();
+        $container->instance(Repository::class, new Repository(new Dispatcher()));
+
+        return new RlsManager($container, new NullLogger(), $events);
     }
 
     /**
@@ -262,11 +269,7 @@ class RlsManagerTest extends TestCase
             },
         );
 
-        $manager = new RlsManager(
-            new Repository(new Dispatcher()),
-            new NullLogger(),
-            $events,
-        );
+        $manager = $this->manager($events);
         $manager->setBypassHandler(static fn(string $reason, callable $callback) => $callback());
         $manager->withoutIsolation('nightly-report', fn() => null);
 
