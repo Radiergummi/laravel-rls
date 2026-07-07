@@ -22,12 +22,17 @@ switch their base to `SecurityTestCase` when implementing.
 | 1 | Context leakage — pooling / queue / Octane (needs infra) | [`CrossWorkerLeakageTest`](CrossWorkerLeakageTest.php) | 🚧 stub |
 | 2 | Bypass abuse — forged GUC inert, flag exception-safety, fail-closed | [`BypassAbuseTest`](BypassAbuseTest.php) | ✅ written |
 | 3 | SQL injection — malicious *values* stay bound params | [`MaliciousValueTest`](MaliciousValueTest.php) | ✅ written (value angle) |
-| 3 | Raw-SQL boundary — DB::statement, SECURITY DEFINER, views, COPY | [`RawSqlBoundaryTest`](RawSqlBoundaryTest.php) | 🚧 stub |
+| 3 | Raw-SQL boundary — raw reads/writes, fail-loud guard, SECURITY DEFINER | [`RawSqlBoundaryTest`](RawSqlBoundaryTest.php) | ✅ written (core) |
 | 4 | Policy correctness & compounding | [`PolicyCompoundingTest`](PolicyCompoundingTest.php) | 🚧 stub |
 | 5 | Role / privilege matrix | [`PrivilegeMatrixTest`](PrivilegeMatrixTest.php) | 🚧 stub |
 | 6 | Value / type edge cases fail closed | [`MaliciousValueTest`](MaliciousValueTest.php) | ✅ written |
 | 7 | Migration / DDL hazards | [`MigrationDdlTest`](MigrationDdlTest.php) | 🚧 stub |
 | 8 | Covert channels | [`CovertChannelTest`](CovertChannelTest.php) | 🚧 stub |
+
+`RawSqlBoundaryTest` covers raw `DB::select`/`update`/`delete` confinement, the
+fail-loud guard's quoted-vs-unquoted boundary, and the `SECURITY DEFINER` bypass.
+Still open for category 3: views (`security_invoker`), CTEs, `COPY`, `TRUNCATE`,
+and triggers.
 
 ## Done when (from the milestone)
 

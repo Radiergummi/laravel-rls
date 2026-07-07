@@ -4,35 +4,165 @@ declare(strict_types=1);
 
 namespace Radiergummi\LaravelRls\Tests\Security;
 
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
-use PHPUnit\Framework\TestCase;
+use Radiergummi\LaravelRls\Exceptions\MissingIsolationContext;
+use Radiergummi\LaravelRls\Tests\Fixtures\Models\Document;
 
 /**
- * Threat category 3 — SQL injection and the raw-SQL boundary. RLS confines rows
- * on a connection; it does not sandbox arbitrary SQL. This suite must pin the
- * exact boundary: what the fail-loud guard catches, and where a caller can step
- * outside the policy (SECURITY DEFINER, the admin connection). Genuine limits
- * are documented as known-limits, not hidden.
+ * Threat category 3 — SQL injection and the raw-SQL boundary. Two distinct
+ * layers, and this suite pins where each stands:
  *
- * When implementing: switch the base to SecurityTestCase.
+ *  1. The DATABASE policy is the real boundary. It confines *every* access path
+ *     on the connection — Eloquent, the query builder, and hand-written raw SQL
+ *     alike — because the filter lives in Postgres, not in PHP. These tests prove
+ *     raw reads and writes stay scoped and fail closed.
+ *
+ *  2. The PHP fail-loud guard (`on_missing_context = throw`) is a best-effort
+ *     convenience, not the boundary. It matches the query-builder's quoted
+ *     identifiers (`"documents"`); hand-written raw SQL with an unquoted table
+ *     name slips past it — but the database still fails closed, so security is
+ *     unaffected. This is the known-fuzzy edge, characterized here rather than
+ *     hidden.
+ *
+ *  3. A `SECURITY DEFINER` function owned by a privileged role runs outside the
+ *     caller's scope. That is a documented bypass — a known limit, asserted so it
+ *     can never regress into a surprise.
  *
  * @see docs/MILESTONES.md — Milestone B, threat category 3
  */
-#[TestDox('Security: raw-SQL boundary (TODO)')]
-class RawSqlBoundaryTest extends TestCase
+#[TestDox('Security: raw-SQL boundary')]
+class RawSqlBoundaryTest extends SecurityTestCase
 {
     #[Test]
-    #[TestDox('Raw DB::statement / DB::select / DB::unprepared on a managed table stays confined')]
-    public function raw_sql_on_a_managed_table_stays_confined(): void
+    #[TestDox('Raw DB::select on a managed table is confined to the acting tenant')]
+    public function raw_select_is_confined_to_the_acting_tenant(): void
     {
-        $this->markTestIncomplete('Milestone B §3: characterize exactly what the fail-loud guard catches and what leaks.');
+        $count = $this->isolateTo(
+            ['tenant_id' => $this->tenantA->id],
+            fn() => (int) $this->selectSingleValueFromDatabase(
+                'select count(*) as value from documents',
+            ),
+        );
+
+        $this->assertSame(self::COUNT_A, $count);
     }
 
     #[Test]
-    #[TestDox('A SECURITY DEFINER function is a documented bypass, not silently confined')]
-    public function security_definer_boundary_is_pinned(): void
+    #[TestDox('Raw DB::select with no context fails closed at the database, not open')]
+    public function raw_select_without_context_fails_closed(): void
     {
-        $this->markTestIncomplete('Milestone B §3: SECURITY DEFINER functions, views, CTEs, subqueries, triggers, COPY, TRUNCATE.');
+        $count = (int) $this->selectSingleValueFromDatabase(
+            'select count(*) as value from documents',
+        );
+
+        $this->assertSame(0, $count);
+    }
+
+    #[Test]
+    #[TestDox('A raw UPDATE cannot reach another tenant\'s rows')]
+    public function raw_update_cannot_touch_another_tenant(): void
+    {
+        $affected = $this->isolateTo(
+            ['tenant_id' => $this->tenantA->id],
+            fn() => DB::update("update documents set title = 'breach'"),
+        );
+
+        // The raw UPDATE only saw the acting tenant's rows.
+        $this->assertSame(self::COUNT_A, $affected);
+
+        // ...and none of tenant B's rows were touched.
+        $this->isolateTo(['tenant_id' => $this->tenantB->id], function (): void {
+            $this->assertSame(
+                0,
+                Document::query()->where('title', 'breach')->count(),
+                'A raw UPDATE reached across the tenant boundary.',
+            );
+        });
+    }
+
+    #[Test]
+    #[TestDox('A raw DELETE cannot reach another tenant\'s rows')]
+    public function raw_delete_cannot_touch_another_tenant(): void
+    {
+        $deleted = $this->isolateTo(
+            ['tenant_id' => $this->tenantA->id],
+            fn() => DB::delete('delete from documents'),
+        );
+
+        $this->assertSame(self::COUNT_A, $deleted);
+
+        // Tenant B's rows survive an unscoped-looking raw DELETE.
+        $this->isolateTo(['tenant_id' => $this->tenantB->id], function (): void {
+            $this->assertSame(self::COUNT_B, Document::query()->count());
+        });
+    }
+
+    #[Test]
+    #[TestDox('Fail-loud mode catches query-builder access to a managed table with no context')]
+    public function fail_loud_guard_catches_quoted_managed_table_access(): void
+    {
+        config(['rls.on_missing_context' => 'throw']);
+
+        $this->expectException(MissingIsolationContext::class);
+
+        // The query builder quotes identifiers ("documents"), which the guard matches.
+        DB::select('select * from "documents"');
+    }
+
+    #[Test]
+    #[TestDox('Fail-loud mode does NOT catch unquoted raw SQL — but the database still fails closed')]
+    public function fail_loud_guard_misses_unquoted_raw_sql_yet_db_stays_closed(): void
+    {
+        // Known limit: the guard keys on the quoted identifier "documents", so an
+        // unquoted hand-written statement slips past the PHP-level throw. This is
+        // a convenience gap, not a security one — the database policy still
+        // returns zero rows.
+        config(['rls.on_missing_context' => 'throw']);
+
+        $count = (int) $this->selectSingleValueFromDatabase(
+            'select count(*) as value from documents',
+        );
+
+        $this->assertSame(0, $count, 'The database policy failed to confine an unguarded raw read.');
+    }
+
+    #[Test]
+    #[TestDox('A SECURITY DEFINER function owned by a privileged role bypasses isolation (known limit)')]
+    public function security_definer_function_bypasses_isolation(): void
+    {
+        // A function owned by the BYPASSRLS role runs as that role, outside the
+        // caller's scope. Create it *as* rls_bypass on the admin connection so it
+        // is owned by that role (rls_app cannot re-own to a role it is not a
+        // member of); the app session then calls it within its own transaction.
+        $admin = DB::connection('pgsql_admin');
+        $admin->statement(
+            'create function count_all_documents() returns bigint language sql security definer '
+            . 'as $$ select count(*) from documents $$',
+        );
+
+        try {
+            $seen = $this->isolateTo(
+                ['tenant_id' => $this->tenantA->id],
+                fn() => (int) $this->selectSingleValueFromDatabase(
+                    'select count_all_documents() as value',
+                ),
+            );
+
+            // Documented boundary: the SECURITY DEFINER function saw *every*
+            // tenant's rows, not just the acting tenant's. RLS confines rows on a
+            // connection; it does not sandbox a function that deliberately runs
+            // as another role.
+            $this->assertSame(
+                self::COUNT_A + self::COUNT_B,
+                $seen,
+                'SECURITY DEFINER no longer bypasses isolation — the documented boundary changed; update the docs.',
+            );
+        } finally {
+            // Created on a connection outside the RefreshDatabase transaction, so
+            // it persists unless dropped explicitly.
+            $admin->statement('drop function if exists count_all_documents()');
+        }
     }
 }

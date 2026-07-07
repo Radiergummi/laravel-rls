@@ -21,6 +21,11 @@ $PSQL -c "GRANT CONNECT ON DATABASE rls_test TO rls_bypass;"
 # every test: default privileges apply to objects rls_app creates afterward.
 PSQL_DB="psql -h 127.0.0.1 -U postgres -v ON_ERROR_STOP=1 -d rls_test"
 $PSQL_DB -c "GRANT USAGE ON SCHEMA public TO rls_bypass;"
+# The adversarial security suite (tests/Security/RawSqlBoundaryTest) creates a
+# SECURITY DEFINER function owned by rls_bypass to pin that documented bypass
+# boundary; owning a function needs CREATE on the schema (revoked from PUBLIC in
+# PG 15+).
+$PSQL_DB -c "GRANT CREATE ON SCHEMA public TO rls_bypass;"
 $PSQL_DB -c "ALTER DEFAULT PRIVILEGES FOR ROLE rls_app IN SCHEMA public GRANT ALL ON TABLES TO rls_bypass;"
 $PSQL_DB -c "ALTER DEFAULT PRIVILEGES FOR ROLE rls_app IN SCHEMA public GRANT ALL ON SEQUENCES TO rls_bypass;"
 
