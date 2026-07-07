@@ -117,8 +117,11 @@ class ContextSchema
         $statements = [];
 
         foreach ($this->isolationKeys as $name => $type) {
+            // parallel safe, like rls.context(): Postgres derives a query's parallel-safety from the
+            // RLS policy's declared function, so an unsafe helper used in a policy would silently
+            // force a serial plan on the isolated table.
             $statements[] = sprintf(
-                'create or replace function rls.%s() returns %s language sql stable as $$'
+                'create or replace function rls.%s() returns %s language sql stable parallel safe as $$'
                 . " select rls.context('%s')::%s $$",
                 $name,
                 $type,

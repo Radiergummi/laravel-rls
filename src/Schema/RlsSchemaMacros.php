@@ -7,6 +7,8 @@ namespace Radiergummi\LaravelRls\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Support\Fluent;
+use Radiergummi\LaravelRls\Context\RlsManager;
+use RuntimeException;
 
 /**
  * RLS Schema Macros
@@ -91,6 +93,24 @@ class RlsSchemaMacros
                 );
             },
         );
+
+        // Earned sugar: only meaningful once a `tenant_id` dimension is declared, from which it takes
+        // the column's Postgres type. Delegates to isolatedBy() so there is one isolation code path.
+        Blueprint::macro('tenantIsolated', function (): IsolatedByDefinition {
+            $schema = app(RlsManager::class)->schema();
+
+            if ($schema === null || !$schema->has('tenant_id')) {
+                throw new RuntimeException(
+                    'tenantIsolated() needs a declared "tenant_id" dimension. Declare it with'
+                    . " Rls::defineContext(fn (\$c) => \$c->uuid('tenant_id')), or call"
+                    . " isolatedBy('tenant_id') directly.",
+                );
+            }
+
+            $type = $schema->isolationKeys()['tenant_id'];
+
+            return $this->isolatedBy('tenant_id', type: $type);
+        });
 
         PostgresGrammar::macro(
             'compileRlsRaw',

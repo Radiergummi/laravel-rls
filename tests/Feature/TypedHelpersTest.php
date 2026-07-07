@@ -40,6 +40,27 @@ class TypedHelpersTest extends TestCase
         });
     }
 
+    /**
+     * @throws Throwable
+     */
+    #[Test]
+    #[TestDox('Generated SQL helper is PARALLEL SAFE like rls.context()')]
+    public function generated_sql_helper_is_parallel_safe(): void
+    {
+        Rls::defineContext(static fn(ContextSchema $context) => $context->uuid('tenant_id'));
+
+        foreach (Rls::schema()?->functionStatements() ?? [] as $sql) {
+            DB::statement($sql);
+        }
+
+        $marker = $this->selectSingleValueFromDatabase(
+            'select proparallel as value from pg_proc '
+            . "where proname = 'tenant_id' and pronamespace = 'rls'::regnamespace",
+        );
+
+        $this->assertSame('s', $marker);
+    }
+
     #[Test]
     #[TestDox('Typed PHP accessor reads the isolation key')]
     public function typed_php_accessor_reads_the_isolation_key(): void

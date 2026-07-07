@@ -9,6 +9,9 @@ reaches `1.0.0`. While on `0.x`, minor versions may contain breaking changes.
 
 ### Added
 
+- **`$table->tenantIsolated()` schema macro** — earned sugar for
+  `isolatedBy('tenant_id')` that reads the column type from the declared context
+  schema. Fails loudly if no `tenant_id` dimension has been declared.
 - **Testing assertions `assertVisibleTo()` / `assertNotVisibleTo()`** on the
   `InteractsWithRls` trait: assert that a set of model keys is (or is not) visible
   under a given isolation context. Subset semantics, so extra visible rows do not
@@ -22,12 +25,13 @@ reaches `1.0.0`. While on `0.x`, minor versions may contain breaking changes.
 
 ### Changed
 
-- **`rls.context()` is now declared `PARALLEL SAFE`.** PostgreSQL derives a
-  query's parallel-safety from the RLS policy's declared function, so the
-  `CREATE FUNCTION` default (`PARALLEL UNSAFE`) was silently forcing a serial
-  plan on every isolated table. Isolated tables can now use parallel query plans;
-  results stay correctly scoped because parallel workers inherit the `app.*`
-  GUCs. Re-run the `rls:sync`/functions migration to pick up the change.
+- **`rls.context()` and the generated typed helpers (`rls.<dimension>()`) are now
+  declared `PARALLEL SAFE`.** PostgreSQL derives a query's parallel-safety from
+  the RLS policy's declared function, so the `CREATE FUNCTION` default (`PARALLEL
+  UNSAFE`) was silently forcing a serial plan on every isolated table. Isolated
+  tables can now use parallel query plans; results stay correctly scoped because
+  parallel workers inherit the `app.*` GUCs. Re-run the functions migration and
+  `rls:sync` to pick up the change.
 
 ### Fixed
 

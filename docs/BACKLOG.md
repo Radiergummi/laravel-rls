@@ -138,9 +138,10 @@ and *where* it touches the code.
 
 ## P2 — Ergonomics & polish
 
-- [ ] **Earned sugar macros** (`$table->tenantIsolated()`) generated from a
-  declared primary scope dimension, rather than only the generic `isolatedBy()`.
-  *Design §9.*
+- [x] **Earned sugar macro** `$table->tenantIsolated()` — delegates to
+  `isolatedBy('tenant_id')` using the type declared for `tenant_id` in the
+  context schema, and fails loudly if no `tenant_id` dimension is declared (so it
+  only "exists" once earned). `TenantIsolatedMacroTest`. *Design §9.*
 
 - [~] **Richer test assertions** from the design. Done: `assertVisibleTo` /
   `assertNotVisibleTo` (subset semantics — asserts given model keys are / are not
