@@ -9,6 +9,10 @@ reaches `1.0.0`. While on `0.x`, minor versions may contain breaking changes.
 
 ### Added
 
+- **Testing assertions `assertVisibleTo()` / `assertNotVisibleTo()`** on the
+  `InteractsWithRls` trait: assert that a set of model keys is (or is not) visible
+  under a given isolation context. Subset semantics, so extra visible rows do not
+  fail the assertion.
 - **Opt-in nested-transaction tenant-change guard.** Set `rls.on_nested_change`
   to `'throw'` to raise `NestedTenantContext` when an isolation key changes to a
   different value while a transaction is already open — catching a transaction

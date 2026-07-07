@@ -142,10 +142,11 @@ and *where* it touches the code.
   declared primary scope dimension, rather than only the generic `isolatedBy()`.
   *Design §9.*
 
-- [ ] **Richer test assertions** from the design not yet built: `assertVisibleTo`,
-  `assertNotVisibleTo`, `assertRlsScoped`, `Rls::explain()` ("why is my result
-  empty?" debugger), `dumpRlsPolicies`, `#[RlsContext]` / `#[WithoutRls]`
-  attributes, Pest helpers. *Design §13.*
+- [~] **Richer test assertions** from the design. Done: `assertVisibleTo` /
+  `assertNotVisibleTo` (subset semantics — asserts given model keys are / are not
+  visible under a context; `TenantIsolationTest`). Still to do: `assertRlsScoped`,
+  `Rls::explain()` ("why is my result empty?" debugger), `dumpRlsPolicies`,
+  `#[RlsContext]` / `#[WithoutRls]` attributes, Pest helpers. *Design §13.*
 
 - [x] **`STABLE` volatility + `PARALLEL SAFE` confirmation.** Helpers are declared
   `STABLE` (index-scan-able). `rls.context()` is now also `PARALLEL SAFE` —

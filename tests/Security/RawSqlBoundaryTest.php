@@ -189,19 +189,25 @@ class RawSqlBoundaryTest extends SecurityTestCase
         // it does not become an escape hatch.
         DB::statement('create view visible_documents as select * from documents');
 
-        $scoped = $this->isolateTo(
-            ['tenant_id' => $this->tenantA->id],
-            fn() => (int) $this->selectSingleValueFromDatabase(
-                'select count(*) as value from visible_documents',
-            ),
-        );
-        $this->assertSame(self::COUNT_A, $scoped);
+        try {
+            $scoped = $this->isolateTo(
+                ['tenant_id' => $this->tenantA->id],
+                fn() => (int) $this->selectSingleValueFromDatabase(
+                    'select count(*) as value from visible_documents',
+                ),
+            );
+            $this->assertSame(self::COUNT_A, $scoped);
 
-        $this->assertSame(
-            0,
-            (int) $this->selectSingleValueFromDatabase('select count(*) as value from visible_documents'),
-            'The view leaked rows with no context set.',
-        );
+            $this->assertSame(
+                0,
+                (int) $this->selectSingleValueFromDatabase('select count(*) as value from visible_documents'),
+                'The view leaked rows with no context set.',
+            );
+        } finally {
+            // Drop the view explicitly rather than leaning on transaction rollback: testbench may run
+            // a migration refresh at a class boundary, and a leaked view blocks dropping `documents`.
+            DB::statement('drop view if exists visible_documents');
+        }
     }
 
     #[Test]

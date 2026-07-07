@@ -121,6 +121,58 @@ trait InteractsWithRls
     }
 
     /**
+     * Assert that, under the given isolation context, every one of the given model keys is visible
+     * (i.e. survives the RLS policy). Subset semantics: extra visible rows are fine.
+     *
+     * @param array<string, mixed> $context
+     * @param class-string<Model>  $modelClass
+     * @param array<int, mixed>    $ids
+     *
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    protected function assertVisibleTo(array $context, string $modelClass, array $ids): void
+    {
+        Rls::isolateTo($context, function () use ($modelClass, $ids): void {
+            $key = (new $modelClass())->getKeyName();
+            $visible = $modelClass::query()->whereIn($key, $ids)->pluck($key)->all();
+
+            $missing = array_values(array_diff($ids, $visible));
+
+            $this->assertSame(
+                [],
+                $missing,
+                'Expected rows are not visible under this context: ' . implode(', ', $missing),
+            );
+        });
+    }
+
+    /**
+     * Assert that, under the given isolation context, none of the given model keys is visible (the
+     * RLS policy hides every one of them).
+     *
+     * @param array<string, mixed> $context
+     * @param class-string<Model>  $modelClass
+     * @param array<int, mixed>    $ids
+     *
+     * @throws InvalidContextValue
+     * @throws RuntimeException
+     */
+    protected function assertNotVisibleTo(array $context, string $modelClass, array $ids): void
+    {
+        Rls::isolateTo($context, function () use ($modelClass, $ids): void {
+            $key = (new $modelClass())->getKeyName();
+            $leaked = $modelClass::query()->whereIn($key, $ids)->pluck($key)->all();
+
+            $this->assertSame(
+                [],
+                array_values($leaked),
+                'Rows that should be hidden are visible under this context: ' . implode(', ', $leaked),
+            );
+        });
+    }
+
+    /**
      * @template T
      *
      * @param T $value

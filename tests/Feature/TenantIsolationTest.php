@@ -67,6 +67,26 @@ class TenantIsolationTest extends TestCase
     }
 
     #[Test]
+    #[TestDox('assertVisibleTo()/assertNotVisibleTo() confirm which rows a context can see')]
+    public function visibility_assertions_confirm_row_visibility(): void
+    {
+        $mine = $this->isolateTo(
+            ['tenant_id' => $this->a->id],
+            fn() => Document::factory()->count(2)->create(['tenant_id' => $this->a->id])->modelKeys(),
+        );
+        $theirs = $this->isolateTo(
+            ['tenant_id' => $this->b->id],
+            fn() => Document::factory()->count(2)->create(['tenant_id' => $this->b->id])->modelKeys(),
+        );
+
+        $this->assertVisibleTo(['tenant_id' => $this->a->id], Document::class, $mine);
+        $this->assertNotVisibleTo(['tenant_id' => $this->a->id], Document::class, $theirs);
+
+        $this->assertVisibleTo(['tenant_id' => $this->b->id], Document::class, $theirs);
+        $this->assertNotVisibleTo(['tenant_id' => $this->b->id], Document::class, $mine);
+    }
+
+    #[Test]
     #[TestDox('Missing isolation context fails closed with zero rows')]
     public function missing_context_is_fail_closed(): void
     {
