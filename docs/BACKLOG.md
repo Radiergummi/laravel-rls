@@ -155,8 +155,16 @@ and *where* it touches the code.
   `ParallelSafetyTest`: a forced-parallel scan parallelizes and stays correctly
   scoped. *Design §8/§21.*
 
-- [ ] **Nested-transaction tenant-change guard** (`NestedTenantContext` — throw
-  when the tenant dimension changes inside an open transaction). *Design §4.*
+- [x] **Nested-transaction tenant-change guard** (`NestedTenantContext` — throw
+  when an isolation key changes to a different value inside an open transaction).
+  Opt-in via `rls.on_nested_change = 'throw'` (default `'allow'`): the standard
+  `RefreshDatabase`/`DatabaseTransactions` harness wraps every test in one
+  transaction, so an always-on guard would trip the normal "seed as A, assert as
+  B" pattern; production code under the default `wrap` boundary never hits it
+  either (no open transaction between queries → nesting is at txn level 0). It
+  fires only for genuine cross-scope work inside an explicit transaction.
+  `NestedTransactionGuardTest`; `push()` rolls the frame back on a rejected sync
+  so the stack stays clean. *Design §4.*
 
 - [ ] **Migration auto-bypass** (wrap `MigrationsStarted` in `system()`) so data
   backfills under `owner`+FORCE don't silently touch zero rows. *Design §12.*

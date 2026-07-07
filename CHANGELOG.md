@@ -7,6 +7,15 @@ reaches `1.0.0`. While on `0.x`, minor versions may contain breaking changes.
 
 ## [Unreleased]
 
+### Added
+
+- **Opt-in nested-transaction tenant-change guard.** Set `rls.on_nested_change`
+  to `'throw'` to raise `NestedTenantContext` when an isolation key changes to a
+  different value while a transaction is already open — catching a transaction
+  that would otherwise silently straddle two tenants. Default `'allow'` preserves
+  current behavior (and keeps the `RefreshDatabase` test harness, which wraps each
+  test in a transaction, working unchanged).
+
 ### Changed
 
 - **`rls.context()` is now declared `PARALLEL SAFE`.** PostgreSQL derives a

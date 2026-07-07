@@ -11,6 +11,7 @@ use InvalidArgumentException;
 use Radiergummi\LaravelRls\Context\RlsManager;
 use Radiergummi\LaravelRls\Exceptions\MissingContextBoundary;
 use Radiergummi\LaravelRls\Exceptions\MissingIsolationContext;
+use Radiergummi\LaravelRls\Exceptions\NestedTenantContext;
 use Throwable;
 
 use function array_values;
@@ -28,6 +29,14 @@ trait HandlesRlsContext
      */
     private array $rlsAppliedKeys = [];
 
+    /**
+     * The stringified GUC value we last applied for each key. Lets us detect a mid-transaction scope
+     * switch (an already-applied isolation key taking a different value while a transaction is open).
+     *
+     * @var array<string, string>
+     */
+    private array $rlsAppliedValues = [];
+
     private bool $inRlsGuard = false;
 
     public function beginTransaction(): void
@@ -35,7 +44,11 @@ trait HandlesRlsContext
         parent::beginTransaction();
 
         if ($this->transactionLevel() === 1) {
+            // A fresh transaction has none of the previous transaction's GUCs (they died at COMMIT),
+            // so clear the applied-value record too — otherwise the nested-change guard would compare
+            // this transaction's context against a prior, unrelated transaction's scope.
             $this->rlsAppliedKeys = [];
+            $this->rlsAppliedValues = [];
             $this->applyRlsContext();
         }
     }
@@ -61,6 +74,41 @@ trait HandlesRlsContext
         assert(is_string($prefix));
         $context = app(RlsManager::class)->current();
 
+        $next = [];
+
+        if ($context !== null) {
+            foreach ($context->values() as $key => $value) {
+                $next[$key] = $this->stringifyGucValue($value);
+            }
+        }
+
+        // Nested-transaction tenant-change guard: within an open transaction (transaction strategy),
+        // an already-applied isolation key must not switch to a different non-empty value — the
+        // transaction would silently straddle two scopes. Blanking a key (switch to '') is allowed:
+        // that is a pop restoring the pre-transaction state, not a scope straddle.
+        //
+        // Opt-in ('throw'), because the standard RefreshDatabase/DatabaseTransactions test harness
+        // wraps every test in one transaction — so a normal "seed as A, assert as B" test would trip
+        // an always-on guard. Production code under the default `wrap` boundary never hits it either:
+        // there is no open transaction between queries, so a nested isolateTo to another scope is at
+        // transaction level 0. It fires only for genuine cross-scope writes inside an explicit
+        // transaction.
+        $guarding = config('rls.on_nested_change', 'allow') === 'throw';
+
+        if ($guarding && $local && $this->transactionLevel() >= 1) {
+            foreach ($this->rlsAppliedValues as $key => $applied) {
+                if ($applied === '') {
+                    continue;
+                }
+
+                $incoming = $next[$key] ?? '';
+
+                if ($incoming !== '' && $incoming !== $applied) {
+                    throw NestedTenantContext::forChangedKey($key, $applied, $incoming);
+                }
+            }
+        }
+
         // Blank any isolation keys we previously set, so popping/switching context cannot leave a
         // stale value behind.
         foreach ($this->rlsAppliedKeys as $key) {
@@ -68,12 +116,12 @@ trait HandlesRlsContext
         }
 
         $this->rlsAppliedKeys = [];
+        $this->rlsAppliedValues = [];
 
-        if ($context !== null) {
-            foreach ($context->values() as $key => $value) {
-                $this->setConfig($prefix . $key, $this->stringifyGucValue($value), $local);
-                $this->rlsAppliedKeys[] = $key;
-            }
+        foreach ($next as $key => $value) {
+            $this->setConfig($prefix . $key, $value, $local);
+            $this->rlsAppliedKeys[] = $key;
+            $this->rlsAppliedValues[$key] = $value;
         }
     }
 
@@ -141,6 +189,7 @@ trait HandlesRlsContext
             $this->setConfig($prefix . $key, '', false);
         }
         $this->rlsAppliedKeys = [];
+        $this->rlsAppliedValues = [];
     }
 
     /**
@@ -158,6 +207,7 @@ trait HandlesRlsContext
 
         if (config('rls.strategy', 'transaction') === 'session') {
             $this->rlsAppliedKeys = [];
+            $this->rlsAppliedValues = [];
             $this->applyRlsContext();
         }
 

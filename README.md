@@ -236,6 +236,7 @@ in either.
 | `strategy`           | `transaction`           | `transaction` (pooling-safe, default) or `session` (one fewer round-trip, needs a direct connection).                                                                            |
 | `boundary`           | `wrap`                  | How a scope is applied per query: `wrap` (auto-wrap in a transaction), `explicit` (require your own transaction, else throw), or `request` (a middleware opens one per request). |
 | `on_missing_context` | `closed`                | With no context on an isolated table: `closed` (database returns zero rows) or `throw` (fail loudly in PHP before querying).                                                     |
+| `on_nested_change`   | `allow`                 | When a scope changes while a transaction is already open: `allow`, or `throw` (`NestedTenantContext`) to catch a transaction accidentally straddling two tenants. Opt-in because the standard `RefreshDatabase` test harness runs each test in a transaction. |
 | `leak_canary`        | `log`                   | Detects a context that survived past a job or request on a long-lived worker: `log`, `throw`, or `off`. The stale context is always cleared regardless.                          |
 | `connection_class`   | `RlsPostgresConnection` | Set to a class extending another package's PostgreSQL connection to compose with it.                                                                                             |
 

@@ -20,6 +20,7 @@ use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Exceptions\RlsContextLeaked;
 use Radiergummi\LaravelRls\RlsServiceProvider;
 use RuntimeException;
+use Throwable;
 
 use function config;
 use function is_array;
@@ -182,7 +183,17 @@ class RlsManager
     {
         $this->validate($context->values());
         $this->repository()->push(self::KEY, $context);
-        $this->afterChange();
+
+        // afterChange() syncs the new context to the connection, which may reject it (e.g. the
+        // nested-transaction tenant-change guard). Roll the frame back on failure so a rejected push
+        // does not leave an orphaned frame on the stack for the leak canary to trip over.
+        try {
+            $this->afterChange();
+        } catch (Throwable $exception) {
+            $this->repository()->pop(self::KEY);
+
+            throw $exception;
+        }
     }
 
     /**
