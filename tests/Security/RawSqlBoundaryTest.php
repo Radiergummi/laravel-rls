@@ -165,4 +165,66 @@ class RawSqlBoundaryTest extends SecurityTestCase
             $admin->statement('drop function if exists count_all_documents()');
         }
     }
+
+    #[Test]
+    #[TestDox('A CTE over a managed table stays confined to the acting tenant')]
+    public function a_cte_over_a_managed_table_stays_confined(): void
+    {
+        $scoped = $this->isolateTo(
+            ['tenant_id' => $this->tenantA->id],
+            fn() => (int) $this->selectSingleValueFromDatabase(
+                'with scoped as (select * from documents) select count(*) as value from scoped',
+            ),
+        );
+
+        $this->assertSame(self::COUNT_A, $scoped);
+    }
+
+    #[Test]
+    #[TestDox('A view over a managed table stays confined (the policy filters by session context)')]
+    public function a_view_over_a_managed_table_stays_confined(): void
+    {
+        // The view is owned by the FORCE-bound owner, but the policy predicate
+        // reads the session GUC, so the view sees exactly the caller's scope —
+        // it does not become an escape hatch.
+        DB::statement('create view visible_documents as select * from documents');
+
+        $scoped = $this->isolateTo(
+            ['tenant_id' => $this->tenantA->id],
+            fn() => (int) $this->selectSingleValueFromDatabase(
+                'select count(*) as value from visible_documents',
+            ),
+        );
+        $this->assertSame(self::COUNT_A, $scoped);
+
+        $this->assertSame(
+            0,
+            (int) $this->selectSingleValueFromDatabase('select count(*) as value from visible_documents'),
+            'The view leaked rows with no context set.',
+        );
+    }
+
+    #[Test]
+    #[TestDox('TRUNCATE is table-level and bypasses row isolation (known limit)')]
+    public function truncate_bypasses_row_isolation(): void
+    {
+        // TRUNCATE is not row-filtered: run under tenant A, it still clears tenant
+        // B's rows. Do not rely on RLS to scope a destructive table-level command;
+        // gate TRUNCATE with privileges instead.
+        $this->isolateTo(
+            ['tenant_id' => $this->tenantA->id],
+            fn() => DB::statement('truncate documents'),
+        );
+
+        $survivingForB = $this->isolateTo(
+            ['tenant_id' => $this->tenantB->id],
+            fn() => DB::table('documents')->count(),
+        );
+
+        $this->assertSame(
+            0,
+            $survivingForB,
+            'TRUNCATE under tenant A was confined — the known TRUNCATE-bypasses-RLS limit no longer holds; update the docs.',
+        );
+    }
 }
