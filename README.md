@@ -1,5 +1,8 @@
 # Postgres Row-Level Security (RLS) for Laravel
 
+[![CI](https://github.com/Radiergummi/laravel-rls/actions/workflows/ci.yml/badge.svg)](https://github.com/Radiergummi/laravel-rls/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Enable isolation on a table in a migration, tell the package how to derive the current scope (a tenant, an organization,
 a region, or any dimension you choose), and PostgreSQL confines every read and write to that scope. A forgotten
 `where tenant_id = ?` can no longer leak data, because the filter lives in the database, not in your query builder.
@@ -238,95 +241,6 @@ session parameter outlives a single transaction and would otherwise leak to the 
 package blanks session parameters at each job and request boundary and re-applies them after a reconnect, but the
 direct-connection requirement stands.
 
-## Performance
-
-RLS adds a measurable, well-understood cost, and that cost is almost entirely **round-trips, not query planning**. The
-numbers below come from the bench harness in `bench/` (`composer bench`; raw data in
-[`bench/baseline.json`](bench/baseline.json)), run against PostgreSQL 18 with warm-up plus 2000 iterations per per-query
-cell and 200 per endpoint cell.
-
-**Read the caveats first, because they change how you should read the numbers.** Every figure here is **single-client,
-over the loopback interface**, where a database round-trip is a few tenths of a millisecond. That deliberately isolates
-the package's own overhead from network cost — but it also means the raw microsecond figures *understate* what RLS costs
-on a real network, where a round-trip is milliseconds, not microseconds. The [latency sweep](#the-latency-multiplier)
-below is the honest picture. There is also **no concurrency or contention testing yet** (that is a later milestone), so
-treat these as lower bounds on a quiet machine, not capacity-planning numbers. In each table, *control* is the same
-query with a hand-written `where tenant_id = ?` against a non-RLS table; *treatment* is the RLS-scoped query with no
-manual `where`.
-
-### The shape of the cost: one transaction round-trip
-
-Under the default `transaction` strategy with the `wrap` boundary, a single standalone query is wrapped in its own
-transaction so the scope can be set with `set_config(..., true)` and discarded at commit. That wrapper — `BEGIN`,
-`set_config`, `COMMIT` — is the overhead. For an indexed point read on the loopback:
-
-| scale | control (µs) | treatment (µs) | added (µs) |
-|-------|-------------:|---------------:|-----------:|
-| 1k    |          241 |            624 |       ~383 |
-| 100k  |          233 |            559 |       ~326 |
-
-Two things matter more than the absolute number:
-
-- **RLS does not change the query plan.** The isolation predicate is a plain `column = rls.context(...)` equality, so it
-  uses the same index the query would anyway. `EXPLAIN` on the scoped reads shows Index Scan, Index-Only Scan, and (for
-  the wide range scan at 100k) Bitmap Heap Scan — identical to the unscoped shapes. For the range and aggregate
-  scenarios at 100k the scoped read is effectively the same speed as, or faster than, the control, because scan cost
-  dominates and the equality further narrows the rows. The overhead you pay is the transaction round-trip, not planning.
-- **It is a fixed per-transaction cost, so it amortizes.** The derived fixed set-config cost is ~319 µs at 1k and
-  ~281 µs at 100k *per transaction*. A lone query pays it in full; ten queries batched in one transaction pay it once —
-  the per-query RLS overhead drops from ~330–380 µs for a query on its own to roughly ~45–65 µs per query when ten share
-  a transaction. This is the whole performance story in one sentence: **the cost is per-transaction, and `wrap` gives
-  every standalone query its own transaction.**
-
-### Endpoint-level: why the boundary and strategy matter
-
-A real request rarely runs one query. It runs many — auth, session, route-model binding, then the handler — and under
-`wrap` each standalone query is its own transaction paying its own round-trip. Establishing context once and then
-running K standalone queries makes the effect visible (overhead in µs; *per-query* is overhead ÷ K):
-
-| config (localhost, K standalone queries) | k=1 | k=10 | k=30 | per-query @ k=30 |
-|------------------------------------------|----:|-----:|-----:|-----------------:|
-| `transaction` · `wrap` (default)         | 306 | 3561 | 11161 |           ~372 |
-| `transaction` · `request`                | 376 | 3589 |  1737 |            ~58 |
-| `session`                                | 401 |  338 |  2146 |            ~72 |
-
-Under `wrap`, per-query overhead is flat (~350 µs) and the endpoint total grows **linearly with query count** — thirty
-queries, thirty round-trips. The `request` boundary (one transaction per request) and the `session` strategy (scope set
-once, no per-query transaction) both flatten it: the endpoint total stops tracking K and the per-query cost collapses.
-(The small `request`/`session` cells are noisy — they are differences of two large timings, so a cell can even come out
-slightly negative; read those as "overhead within measurement noise," i.e. effectively zero, not as a speed-up.)
-
-Through PgBouncer (transaction pooling) the picture is the same but amplified, because every transaction also crosses the
-pooler: `wrap` costs ~700–840 µs per query, while `pgbouncer · request` flattens back to ~0. The one combination the
-harness refuses to measure is `pgbouncer · session`: a session GUC set outside a transaction does not survive transaction
-pooling, so it is reported **unsafe by construction** rather than given a misleading number.
-
-### The latency multiplier
-
-Loopback hides the real cost. Inject network latency (here with Toxiproxy, K=10 queries per request) and `wrap`'s
-per-query round-trips multiply against it, while `request` and `session` — which add at most one round-trip per request —
-stay far flatter. Endpoint overhead:
-
-| config (K=10)             |  0 ms |  1 ms |    5 ms |
-|---------------------------|------:|------:|--------:|
-| `transaction` · `wrap`    | 6.3ms | 89.8ms | 236.3ms |
-| `transaction` · `request` | 0.1ms |  0.6ms |  19.3ms |
-| `session`                 | 1.9ms |  6.2ms |  16.3ms |
-
-At a modest 5 ms round-trip, `wrap` already costs roughly **12× more** than `request` for the same request, and the gap
-widens with both latency and query count.
-
-### What to take from this
-
-- The headline single-query figure (~350 µs on localhost) is real but is *not* the number to plan around; it is a
-  loopback lower bound.
-- The cost is round-trips, and round-trips are what your network charges for. On a low-latency link with few queries per
-  request, the default `transaction` · `wrap` is simple and fine. For latency-sensitive or query-heavy endpoints, switch
-  `boundary` to `request` (one transaction per request) or `strategy` to `session` (one round-trip amortized across the
-  whole request, direct connection only) — both turn a per-query cost into a per-request one.
-- These are single-client, uncontended, loopback numbers. Concurrency, contention, and real-network characterization are
-  still to come; reproduce or extend them with `composer bench`.
-
 ## Using it beneath a tenancy package
 
 If you already use [stancl/tenancy](https://github.com/archtechx/tenancy) or
@@ -409,8 +323,93 @@ proving anything.
 - **Your endpoints are latency-sensitive and query-heavy and you cannot change the boundary.** Under the default
   `transaction` · `wrap` strategy the overhead is one transaction round-trip *per standalone query*, which multiplies
   with query count and network latency (see [Performance](#performance)). It is an indexed equality, not a plan
-  regression, and the `request` boundary or `session` strategy flattens it to roughly one round-trip per request — but
-  if you are stuck on `wrap` over a high-latency link with many queries per request, measure before adopting.
+  regression, and the `request` boundary or `session` strategy flattens it to roughly one round-trip per request; but if
+  you are stuck on `wrap` over a high-latency link with many queries per request, measure before adopting.
+
+## Performance
+
+RLS adds a measurable, well-understood cost, and it is almost entirely **round-trips, not query planning**. The numbers
+below come from the bench harness in `bench/` (`composer bench`; raw data in
+[`bench/baseline.json`](bench/baseline.json)), run against PostgreSQL 18 with warm-up plus 2000 iterations per per-query
+cell and 200 per endpoint cell.
+
+Read them as lower bounds. Every figure is **single-client, over the loopback interface**, where a round-trip is a few
+tenths of a millisecond — this isolates the package's own overhead from network cost, but it also means the raw
+microsecond figures *understate* what RLS costs on a real network, where a round-trip is milliseconds. The
+[latency sweep](#the-latency-multiplier) corrects for that. There is **no concurrency or contention testing yet** (a
+later milestone). Throughout, *control* is the same query with a hand-written `where tenant_id = ?` against a non-RLS
+table; *treatment* is the RLS-scoped query with no manual `where`.
+
+### The shape of the cost: one transaction round-trip
+
+Under the default `transaction` strategy with the `wrap` boundary, a single standalone query is wrapped in its own
+transaction so the scope can be set with `set_config(..., true)` and discarded at commit. That wrapper — `BEGIN`,
+`set_config`, `COMMIT` — is the overhead. For an indexed point read on the loopback:
+
+| scale | control (µs) | treatment (µs) | added (µs) |
+|-------|-------------:|---------------:|-----------:|
+| 1k    |          241 |            624 |       ~383 |
+| 100k  |          233 |            559 |       ~326 |
+
+Two properties matter more than the absolute number:
+
+- **The query plan is unchanged.** The isolation predicate is a plain `column = rls.context(...)` equality, so it uses
+  the same index the query would anyway. `EXPLAIN` on the scoped reads shows Index Scan, Index-Only Scan, and (for the
+  wide range scan at 100k) Bitmap Heap Scan — identical to the unscoped shapes. For the range and aggregate scenarios at
+  100k the scoped read is as fast as or faster than the control, because scan cost dominates and the equality narrows
+  the rows further. The overhead is the round-trip, not planning.
+- **The cost is per-transaction, so it amortizes.** The derived fixed set-config cost is ~319 µs at 1k and ~281 µs at
+  100k *per transaction*. A lone query pays it in full; ten queries batched in one transaction pay it once, dropping
+  per-query overhead between ~330–380 µs and ~45–65 µs. Under `wrap`, every standalone query gets its own transaction, hence
+  the full cost.
+
+### Endpoint-level: why the boundary and strategy matter
+
+A real request rarely runs one query. It runs many (auth, session, route-model binding, then the handler) and under
+`wrap` each standalone query is its own transaction paying its own round-trip. Establishing context once and then
+running K standalone queries makes the effect visible (overhead in µs; *per-query* is overhead ÷ K):
+
+| config (localhost, K standalone queries) | k=1 | k=10 |  k=30 | per-query @ k=30 |
+|------------------------------------------|----:|-----:|------:|-----------------:|
+| `transaction` · `wrap` (default)         | 306 | 3561 | 11161 |             ~372 |
+| `transaction` · `request`                | 376 | 3589 |  1737 |              ~58 |
+| `session`                                | 401 |  338 |  2146 |              ~72 |
+
+Under `wrap`, per-query overhead is flat (~350 µs) and the endpoint total grows **linearly with query count** — thirty
+queries, thirty round-trips. The `request` boundary (one transaction per request) and the `session` strategy (scope set
+once, no per-query transaction) both flatten it: the total stops tracking K and per-query cost collapses. (The small
+`request`/`session` cells are differences of two large timings and can even come out slightly negative; read them as
+overhead within measurement noise, not a speed-up.)
+
+Through PgBouncer (transaction pooling) the picture is the same but amplified, because every transaction also crosses
+the pooler: `wrap` costs ~700–840 µs per query, while `pgbouncer · request` flattens back to ~0. The harness refuses to
+measure `pgbouncer · session`: a session GUC set outside a transaction does not survive transaction pooling, so it is
+reported **unsafe by construction** rather than given a misleading number.
+
+### The latency multiplier
+
+Loopback hides the real cost. Inject network latency (Toxiproxy, K=10 queries per request) and `wrap`'s per-query
+round-trips multiply against it, while `request` and `session` — at most one round-trip per request — stay far flatter.
+Endpoint overhead:
+
+| config (K=10)             |  0 ms |   1 ms |    5 ms |
+|---------------------------|------:|-------:|--------:|
+| `transaction` · `wrap`    | 6.3ms | 89.8ms | 236.3ms |
+| `transaction` · `request` | 0.1ms |  0.6ms |  19.3ms |
+| `session`                 | 1.9ms |  6.2ms |  16.3ms |
+
+At a modest 5 ms round-trip, `wrap` already costs roughly **12× more** than `request` for the same request, and the gap
+widens with both latency and query count.
+
+### What to take from this
+
+The headline single-query figure (~350 µs on localhost) is a loopback lower bound, not a planning number: the cost is
+round-trips, and round-trips are what your network charges for. On a low-latency link with few queries per request, the
+default `transaction` · `wrap` is simple and fine. For latency-sensitive or query-heavy endpoints, switch `boundary` to
+`request` or `strategy` to `session` — both turn a per-query cost into a per-request one. These numbers are
+single-client and uncontended; concurrency and real-network characterization are still to come. Reproduce or extend them
+with
+`composer bench`.
 
 ## Development
 
