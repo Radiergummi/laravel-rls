@@ -7,7 +7,7 @@ reaches `1.0.0`. While on `0.x`, minor versions may contain breaking changes.
 
 ## [Unreleased]
 
-## [0.1.0]
+## [0.0.1]
 
 First public, pre-release cut. The mechanism works end to end against real
 PostgreSQL and is covered by 122 tests, including transaction pooling
@@ -39,5 +39,5 @@ database roles.
   and the full version-matrix CI (Milestone C) are still open. Not for
   production use — see the README status banner.
 
-[Unreleased]: https://github.com/Radiergummi/laravel-rls/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/Radiergummi/laravel-rls/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Radiergummi/laravel-rls/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/Radiergummi/laravel-rls/releases/tag/v0.0.1
