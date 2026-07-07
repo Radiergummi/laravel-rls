@@ -200,6 +200,12 @@ on a connection; it does not sandbox arbitrary SQL. A
 `SECURITY DEFINER` function or a query deliberately run on the privileged admin connection is not subject to the
 caller's scope. Those boundaries are documented rather than hidden.
 
+One more thing to keep in mind: RLS filters row *visibility*, but unique constraints and foreign keys are enforced across
+*every* row regardless of the policy. A column that is unique on its own leaks another tenant's data as an existence
+oracle — an insert that collides with a row you cannot see still fails with a unique violation, telling you the value
+exists. Include the isolation key in such constraints so they are scoped per tenant: prefer `unique(tenant_id, slug)`
+over `unique(slug)`, and point foreign keys at rows within the same scope.
+
 ## Role models
 
 RLS treats the table owner specially, and that choice is the main security decision you make. The package supports two
