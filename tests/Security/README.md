@@ -19,7 +19,7 @@ switch their base to `SecurityTestCase` when implementing.
 | # | Category | File | Status |
 |---|----------|------|--------|
 | 1 | Context leakage — stack integrity (exceptions, nesting, bypass) | [`ContextStackIntegrityTest`](ContextStackIntegrityTest.php) | ✅ written |
-| 1 | Context leakage — pooling / queue / Octane (needs infra) | [`CrossWorkerLeakageTest`](CrossWorkerLeakageTest.php) | 🚧 stub |
+| 1 | Context leakage — pooling / queue / Octane | [`CrossWorkerLeakageTest`](CrossWorkerLeakageTest.php) | ✅ core written; live-infra cases marked |
 | 2 | Bypass abuse — forged GUC inert, flag exception-safety, fail-closed | [`BypassAbuseTest`](BypassAbuseTest.php) | ✅ written |
 | 3 | SQL injection — malicious *values* stay bound params | [`MaliciousValueTest`](MaliciousValueTest.php) | ✅ written (value angle) |
 | 3 | Raw-SQL boundary — raw reads/writes, fail-loud guard, SECURITY DEFINER | [`RawSqlBoundaryTest`](RawSqlBoundaryTest.php) | ✅ written (core) |
