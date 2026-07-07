@@ -28,7 +28,7 @@ tests**; the security work adds more on top (see below).
 | Milestone | State | What's done / what's left |
 |---|---|---|
 | **A — Performance harness** | ✅ **done** | `composer bench`, committed `bench/baseline.json`, per-query + endpoint + latency-sweep cells, `EXPLAIN` evidence, and a README Performance section. |
-| **B — Adversarial security suite** | 🚧 **in progress** | `tests/Security/` scaffolded. Written: bypass abuse (cat 2), malicious values (cat 6 + injection value of 3), context-stack integrity (cat 1, infra-free subset), raw-SQL boundary core (cat 3), policy compounding (cat 4 — found + fixed the compound-key macro bug), migration/DDL hazards (cat 7), role/privilege matrix (cat 5). Left: cross-worker leakage (cat 1 infra), covert channels (8). See [`tests/Security/README.md`](../tests/Security/README.md). |
+| **B — Adversarial security suite** | 🚧 **in progress** | `tests/Security/` scaffolded. Written: bypass abuse (cat 2), malicious values (cat 6 + injection value of 3), context-stack integrity (cat 1, infra-free subset), raw-SQL boundary core (cat 3), policy compounding (cat 4 — found + fixed the compound-key macro bug), migration/DDL hazards (cat 7), role/privilege matrix (cat 5), covert channels (cat 8 — deterministic channels tested, timing documented). Left: cross-worker leakage (cat 1 infra: PgBouncer / queue / Octane). See [`tests/Security/README.md`](../tests/Security/README.md). |
 | **C — Version-matrix CI** | 🟡 **partial** | Minimal CI is green (`.github/workflows/ci.yml`: PHP 8.2–8.4 × Postgres 18, PHPStan, Pint). Left: the full PG × PHP × Laravel matrix, `prefer-lowest`, the PgBouncer job, and the perf-regression job. |
 
 ---
@@ -117,9 +117,10 @@ table, no scoping at all) to attribute the cost between "RLS predicate" and
 ## Milestone B — Adversarial security & edge-case suite
 
 > **Status: 🚧 in progress.** `tests/Security/` scaffolded with a base case, a
-> category map, and stub files. Threat categories 2, 6, 4, 7, 5, the infra-free
-> subset of 1, and the core of 3 are written and green; category 8 and the
-> infra-dependent parts of 1 and 3 remain. Per-category status lives in
+> category map, and stub files. Threat categories 2, 3 (core), 4, 5, 6, 7, 8, and
+> the infra-free subset of 1 are written and green; only the infra-dependent
+> cross-worker leakage (cat 1: PgBouncer / queue / Octane) and the views/CTE/COPY
+> tail of cat 3 remain. Per-category status lives in
 > [`tests/Security/README.md`](../tests/Security/README.md).
 
 **Goal:** a *large* suite that actively tries to break isolation across every edge

@@ -27,7 +27,7 @@ switch their base to `SecurityTestCase` when implementing.
 | 5 | Role / privilege matrix | [`PrivilegeMatrixTest`](PrivilegeMatrixTest.php) | ✅ written |
 | 6 | Value / type edge cases fail closed | [`MaliciousValueTest`](MaliciousValueTest.php) | ✅ written |
 | 7 | Migration / DDL hazards | [`MigrationDdlTest`](MigrationDdlTest.php) | ✅ written |
-| 8 | Covert channels | [`CovertChannelTest`](CovertChannelTest.php) | 🚧 stub |
+| 8 | Covert channels | [`CovertChannelTest`](CovertChannelTest.php) | ✅ written (deterministic; timing documented) |
 
 `RawSqlBoundaryTest` covers raw `DB::select`/`update`/`delete` confinement, the
 fail-loud guard's quoted-vs-unquoted boundary, and the `SECURITY DEFINER` bypass.
