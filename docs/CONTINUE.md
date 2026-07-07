@@ -26,20 +26,32 @@ the answer is **yes**, with specific gotchas now captured in code and tests.
 
 ## Current state
 
-- **Branch:** `main` (one self-contained commit per feature).
-- **Tests:** `vendor/bin/phpunit` → 122 tests / 414 assertions, all passing.
-- **P0 hardening complete**, **most of P1 done**, and **Milestone A (performance
-  harness) landed** — `composer bench`, checked-in `bench/baseline.json`,
-  endpoint + latency-sweep cells, README Performance section. P0: leak canary,
-  context value validation, resolver-collision guard, session reset/reconnect,
-  read-replica context, real-PgBouncer test. P1: `withDefault()`, bypass
-  hardening tests, bypass observability (event/log/`rls:audit --threshold`),
-  `rls:install`, `rls:sync`, tenancy docs recipe.
+- **Branch:** `main` (one self-contained commit per feature). `v0.0.1` tagged and
+  on Packagist. A few commits are unpushed — direct push to `main` is blocked by
+  the auto-mode classifier, so push manually (`git push origin main`).
+- **Tests:** `vendor/bin/phpunit` → **183 tests, 1 skipped** (documented timing
+  side channel), all passing. PHPStan + Pint clean.
+- **Milestones:** **A (performance harness) done**, **B (adversarial security
+  suite) done** (all 8 threat categories; found + fixed two real bugs — the
+  compound-key macro and daemon/Octane context loss), **C (version-matrix CI)
+  partial** — minimal CI is green, the full matrix is still open.
+- **P0 hardening complete**, **most of P1 done.** P0: leak canary, context value
+  validation, resolver-collision guard, session reset/reconnect, read-replica
+  context, real-PgBouncer test. P1: `withDefault()`, bypass hardening +
+  observability (event/log/`rls:audit --threshold`), `rls:install`, `rls:sync`,
+  tenancy docs recipe.
+- **P2 polish done (2026-07-07):** `PARALLEL SAFE` on `rls.context()` + the
+  generated typed helpers; opt-in nested-transaction tenant-change guard
+  (`rls.on_nested_change`); `assertVisibleTo()`/`assertNotVisibleTo()` testing
+  assertions; `tenantIsolated()` earned-sugar macro.
 - **CI:** `.github/workflows/ci.yml` runs tests (PHP 8.2–8.4 × Postgres 18),
   PHPStan, and Pint. The full version matrix + PgBouncer job is Milestone C.
-- **Remaining (see [`docs/BACKLOG.md`](BACKLOG.md)), all decision-gated or larger:**
-  `rls:upgrade` (needs a versioning scheme), `--extension`/PGXN path, per-table
-  fail-loud for raw SQL (open policy question), and the P2 polish items.
+- **Remaining (see [`docs/BACKLOG.md`](BACKLOG.md) → "Remaining open items"),** all
+  decision-gated or larger. Decision-gated: `rls:upgrade` (versioning scheme),
+  per-table fail-loud for raw SQL (open policy question), migration auto-bypass
+  (now needs an `admin_connection` — design call). Additive: `--extension`/PGXN
+  path, first-class tenancy bridge, the richer test-tooling tail, package
+  extraction.
 
 ## Bring the environment back up
 
@@ -111,10 +123,20 @@ behavior:
 
 ## Where to start next
 
-Open [`docs/BACKLOG.md`](BACKLOG.md). The **P0** items are the correctness/safety
-gaps that matter before any real use — start with the production leak canary and
-context-value validation, then the real-PgBouncer test. The three **open design
-decisions** at the bottom of the backlog want a call from you before hardening.
+Open [`docs/BACKLOG.md`](BACKLOG.md) → **"Remaining open items"**. P0 hardening,
+Milestones A and B, and the P2 polish batch are all done, so the highest-leverage
+work left is:
+
+1. **Milestone C — full version-matrix CI** (see [`MILESTONES.md`](MILESTONES.md)):
+   multi-Postgres (14–18), Laravel 11/12/13 + `prefer-lowest`, a PgBouncer service
+   that unskips the gated tests, and the optional perf-regression job. Bump
+   `composer.json` to allow Laravel 13 + testbench 11 as part of this.
+2. **Make the three decision-gated calls** before implementing them: `rls:upgrade`
+   versioning scheme, the raw-SQL fail-loud policy, and how migration auto-bypass
+   should behave now that bypass needs an `admin_connection`.
+
+The additive items (`--extension` path, tenancy bridge, richer test tooling) need
+no decision and can be picked up any time.
 
 ## Non-obvious things that will bite you
 

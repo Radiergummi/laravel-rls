@@ -7,6 +7,31 @@ and *where* it touches the code.
 > Post-PoC, pre-release tracks (performance harness, adversarial security suite,
 > version-matrix CI) live in [`MILESTONES.md`](MILESTONES.md).
 
+## Remaining open items (as of 2026-07-07)
+
+**All P0 hardening is done.** What's left is decision-gated or larger; nothing
+blocks sharing the library for feedback. Ordered by how much they need a call from
+the maintainer vs. just implementation:
+
+*Needs a design decision first:*
+- **`rls:upgrade` command** (P1) — needs a versioning scheme for `rls.*` chosen first.
+- **Per-table fail-loud for raw SQL** (P1) — open design question (§21 Q2): allowlist,
+  connection-level fallback, or leave as the documented best-effort convenience gap.
+- **Migration auto-bypass** (P2) — post-bypass-unification it now requires an
+  `admin_connection`; decide auto-when-configured vs. require vs. opt-in.
+
+*Additive, no blocker — just work:*
+- **`--extension` PGXN install path** (P1) — single-source the SQL, emit a PGXN bundle.
+- **First-class tenancy bridge** (P1) — stancl/spatie auto-wiring (docs-first was the
+  resolved decision; a bridge can follow).
+- **Richer test tooling tail** (P2) — `assertRlsScoped`, `Rls::explain()`,
+  `dumpRlsPolicies`, `#[RlsContext]`/`#[WithoutRls]` attributes, Pest helpers.
+- **Package-structure extraction** (P2) — pull the SQL layer into an extraction-ready
+  module. Speculative; do only if the extension path is pursued.
+
+**Done this session (2026-07-07):** `PARALLEL SAFE` helpers, opt-in nested-transaction
+tenant-change guard, `assertVisibleTo`/`assertNotVisibleTo`, `tenantIsolated()` sugar.
+
 ---
 
 ## P0 — Correctness & safety hardening (do before any real use)
@@ -170,6 +195,12 @@ and *where* it touches the code.
 
 - [ ] **Migration auto-bypass** (wrap `MigrationsStarted` in `system()`) so data
   backfills under `owner`+FORCE don't silently touch zero rows. *Design §12.*
+  **Blocked on a design call (2026-07-07):** since the bypass unification, `system()`
+  routes to the `admin_connection` and hard-fails with `AdminConnectionRequired`
+  when none is set — so wrapping *every* migration in `system()` would break
+  migrations for owner-mode users who have no admin connection. Needs a decision:
+  auto-bypass only when an admin connection is configured (else no-op), require one,
+  or make it opt-in. The hazard itself is pinned by `MigrationDdlTest`.
 
 - [ ] **Package structure**: extract the SQL layer as an extraction-ready module
   (possible future standalone PGXN extension). *Design §3.*
