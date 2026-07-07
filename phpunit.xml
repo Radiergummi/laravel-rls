@@ -12,6 +12,7 @@
         <testsuite name="Package">
             <directory>tests/Unit</directory>
             <directory>tests/Feature</directory>
+            <directory>tests/Security</directory>
         </testsuite>
     </testsuites>
     <source>
