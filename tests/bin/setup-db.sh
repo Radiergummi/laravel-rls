@@ -29,4 +29,12 @@ $PSQL_DB -c "GRANT CREATE ON SCHEMA public TO rls_bypass;"
 $PSQL_DB -c "ALTER DEFAULT PRIVILEGES FOR ROLE rls_app IN SCHEMA public GRANT ALL ON TABLES TO rls_bypass;"
 $PSQL_DB -c "ALTER DEFAULT PRIVILEGES FOR ROLE rls_app IN SCHEMA public GRANT ALL ON SEQUENCES TO rls_bypass;"
 
+# rls_restricted is the non-owner role the privilege-matrix security tests
+# (tests/Security/PrivilegeMatrixTest) read rls_app's public tables as. Unlike
+# rls_bypass it does NOT skip RLS — it is an ordinary non-owner, so policies
+# still confine it; these grants only give it table access to be confined on.
+$PSQL_DB -c "GRANT USAGE ON SCHEMA public TO rls_restricted;"
+$PSQL_DB -c "ALTER DEFAULT PRIVILEGES FOR ROLE rls_app IN SCHEMA public GRANT ALL ON TABLES TO rls_restricted;"
+$PSQL_DB -c "ALTER DEFAULT PRIVILEGES FOR ROLE rls_app IN SCHEMA public GRANT ALL ON SEQUENCES TO rls_restricted;"
+
 echo "rls_app + rls_restricted + rls_bypass + rls_test ready"
