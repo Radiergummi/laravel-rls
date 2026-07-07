@@ -12,7 +12,7 @@ use Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
-use Radiergummi\LaravelRls\Support\RlsFunctions;
+use Radiergummi\LaravelRls\Tests\CommittedRlsFixtures;
 use Radiergummi\LaravelRls\Tests\WithTestingUtils;
 use RuntimeException;
 use Throwable;
@@ -26,6 +26,7 @@ use Throwable;
 #[TestDox('Restricted Isolation')]
 class RestrictedIsolationTest extends TestCase
 {
+    use CommittedRlsFixtures;
     use WithTestingUtils;
 
     private string $a = '11111111-1111-1111-1111-111111111111';
@@ -122,22 +123,9 @@ class RestrictedIsolationTest extends TestCase
 
     protected function defineEnvironment($app): void
     {
-        $connection = static fn(string $user): array
-            => [
-                'driver' => 'pgsql',
-                'host' => '127.0.0.1',
-                'port' => 5432,
-                'database' => 'rls_test',
-                'username' => $user,
-                'password' => 'secret',
-                'charset' => 'utf8',
-                'search_path' => 'public',
-                'sslmode' => 'prefer',
-            ];
-
         config(['database.default' => 'pgsql']);
-        config(['database.connections.pgsql' => $connection('rls_restricted')]);
-        config(['database.connections.pgsql_admin' => $connection('rls_app')]);
+        config(['database.connections.pgsql' => $this->rlsConnection('rls_restricted')]);
+        config(['database.connections.pgsql_admin' => $this->rlsConnection('rls_app')]);
         config(['rls.role_model' => 'restricted']);
         config(['rls.admin_connection' => 'pgsql_admin']);
     }
@@ -148,24 +136,15 @@ class RestrictedIsolationTest extends TestCase
 
         $admin = DB::connection('pgsql_admin');
 
-        foreach (RlsFunctions::statements() as $sql) {
-            $admin->statement($sql);
-        }
+        $this->installRlsFunctions($admin);
 
         $admin->statement('drop table if exists demo.things cascade');
         $admin->statement('create schema if not exists demo');
         $admin->statement(
             'create table demo.things (id uuid primary key default gen_random_uuid(), tenant_id uuid not null)',
         );
-        $admin->statement('alter table demo.things enable row level security'); // NO force
-        $admin->statement(
-            'create policy things_access on demo.things as permissive for all using (true) with check (true)',
-        );
-        $admin->statement(
-            'create policy things_iso on demo.things as restrictive for all '
-            . "using (tenant_id = rls.context('tenant_id')::uuid) "
-            . "with check (tenant_id = rls.context('tenant_id')::uuid)",
-        );
+        // NO force — restricted mode confines the non-owner without it.
+        $this->enableIsolation($admin, 'demo.things', 'things', force: false);
 
         $admin->statement('grant usage on schema demo to rls_restricted');
         $admin->statement('grant select, insert, update, delete on demo.things to rls_restricted');

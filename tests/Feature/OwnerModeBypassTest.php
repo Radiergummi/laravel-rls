@@ -12,7 +12,7 @@ use Radiergummi\LaravelRls\Exceptions\AdminConnectionRequired;
 use Radiergummi\LaravelRls\Exceptions\InvalidContextValue;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
-use Radiergummi\LaravelRls\Support\RlsFunctions;
+use Radiergummi\LaravelRls\Tests\CommittedRlsFixtures;
 use Radiergummi\LaravelRls\Tests\WithTestingUtils;
 use RuntimeException;
 
@@ -27,6 +27,7 @@ use RuntimeException;
 #[TestDox('Owner Mode Bypass')]
 class OwnerModeBypassTest extends TestCase
 {
+    use CommittedRlsFixtures;
     use WithTestingUtils;
 
     private string $a = '11111111-1111-1111-1111-111111111111';
@@ -96,22 +97,9 @@ class OwnerModeBypassTest extends TestCase
 
     protected function defineEnvironment($app): void
     {
-        $conn = fn(string $user)
-            => [
-                'driver' => 'pgsql',
-                'host' => '127.0.0.1',
-                'port' => 5432,
-                'database' => 'rls_test',
-                'username' => $user,
-                'password' => 'secret',
-                'charset' => 'utf8',
-                'search_path' => 'public',
-                'sslmode' => 'prefer',
-            ];
-
         config(['database.default' => 'pgsql']);
-        config(['database.connections.pgsql' => $conn('rls_app')]);
-        config(['database.connections.pgsql_admin' => $conn('rls_bypass')]);
+        config(['database.connections.pgsql' => $this->rlsConnection('rls_app')]);
+        config(['database.connections.pgsql_admin' => $this->rlsConnection('rls_bypass')]);
         config(['rls.role_model' => 'owner']);
         config(['rls.admin_connection' => 'pgsql_admin']);
     }
@@ -122,24 +110,13 @@ class OwnerModeBypassTest extends TestCase
 
         // The owner (rls_app) installs the helper and owns the table; FORCE binds
         // even the owner to the policy.
-        foreach (RlsFunctions::statements() as $sql) {
-            DB::statement($sql);
-        }
+        $this->installRlsFunctions(DB::connection());
 
         DB::statement('drop table if exists owner_things cascade');
         DB::statement(
             'create table owner_things (id uuid primary key default gen_random_uuid(), tenant_id uuid not null)',
         );
-        DB::statement('alter table owner_things enable row level security');
-        DB::statement('alter table owner_things force row level security');
-        DB::statement(
-            'create policy owner_things_access on owner_things as permissive for all using (true) with check (true)',
-        );
-        DB::statement(
-            'create policy owner_things_iso on owner_things as restrictive for all '
-            . "using (tenant_id = rls.context('tenant_id')::uuid) "
-            . "with check (tenant_id = rls.context('tenant_id')::uuid)",
-        );
+        $this->enableIsolation(DB::connection(), 'owner_things', 'owner_things', force: true);
 
         // Seed through the BYPASSRLS admin connection (skips FORCE + WITH CHECK),
         // committed so the FORCE-bound owner and the admin connection can read it.

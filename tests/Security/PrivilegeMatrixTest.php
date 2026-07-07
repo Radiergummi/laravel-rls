@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Facades\Rls;
 use Radiergummi\LaravelRls\RlsServiceProvider;
-use Radiergummi\LaravelRls\Support\RlsFunctions;
+use Radiergummi\LaravelRls\Tests\CommittedRlsFixtures;
 use Radiergummi\LaravelRls\Tests\WithTestingUtils;
 
 /**
@@ -33,6 +33,7 @@ use Radiergummi\LaravelRls\Tests\WithTestingUtils;
 #[TestDox('Security: role/privilege matrix')]
 class PrivilegeMatrixTest extends TestCase
 {
+    use CommittedRlsFixtures;
     use WithTestingUtils;
 
     private string $a = '11111111-1111-1111-1111-111111111111';
@@ -111,23 +112,11 @@ class PrivilegeMatrixTest extends TestCase
 
     protected function defineEnvironment($app): void
     {
-        $connection = static fn(string $user, string $password = 'secret'): array => [
-            'driver' => 'pgsql',
-            'host' => '127.0.0.1',
-            'port' => 5432,
-            'database' => 'rls_test',
-            'username' => $user,
-            'password' => $password,
-            'charset' => 'utf8',
-            'search_path' => 'public',
-            'sslmode' => 'prefer',
-        ];
-
         config(['database.default' => 'pgsql']);
-        config(['database.connections.pgsql' => $connection('rls_app')]);
-        config(['database.connections.pgsql_admin' => $connection('rls_bypass')]);
-        config(['database.connections.pgsql_restricted' => $connection('rls_restricted')]);
-        config(['database.connections.pgsql_super' => $connection('postgres', 'postgres')]);
+        config(['database.connections.pgsql' => $this->rlsConnection('rls_app')]);
+        config(['database.connections.pgsql_admin' => $this->rlsConnection('rls_bypass')]);
+        config(['database.connections.pgsql_restricted' => $this->rlsConnection('rls_restricted')]);
+        config(['database.connections.pgsql_super' => $this->rlsConnection('postgres', 'postgres')]);
     }
 
     protected function setUp(): void
@@ -136,23 +125,14 @@ class PrivilegeMatrixTest extends TestCase
 
         $owner = DB::connection('pgsql');
 
-        foreach (RlsFunctions::statements() as $sql) {
-            $owner->statement($sql);
-        }
+        $this->installRlsFunctions($owner);
 
         $owner->statement('drop table if exists matrix_things cascade');
         $owner->statement(
             'create table matrix_things (id uuid primary key default gen_random_uuid(), tenant_id uuid not null)',
         );
-        $owner->statement('alter table matrix_things enable row level security'); // NO force by default
-        $owner->statement(
-            'create policy matrix_things_access on matrix_things as permissive for all using (true) with check (true)',
-        );
-        $owner->statement(
-            'create policy matrix_things_iso on matrix_things as restrictive for all '
-            . "using (tenant_id = rls.context('tenant_id')::uuid) "
-            . "with check (tenant_id = rls.context('tenant_id')::uuid)",
-        );
+        // NO force by default — the matrix toggles it on where a test needs it.
+        $this->enableIsolation($owner, 'matrix_things', 'matrix_things', force: false);
 
         // The non-owner needs to call the policy's rls.context() helper (table
         // access comes from the default privileges in setup-db.sh).
