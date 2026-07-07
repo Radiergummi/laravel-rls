@@ -23,7 +23,7 @@ switch their base to `SecurityTestCase` when implementing.
 | 2 | Bypass abuse — forged GUC inert, flag exception-safety, fail-closed | [`BypassAbuseTest`](BypassAbuseTest.php) | ✅ written |
 | 3 | SQL injection — malicious *values* stay bound params | [`MaliciousValueTest`](MaliciousValueTest.php) | ✅ written (value angle) |
 | 3 | Raw-SQL boundary — raw reads/writes, fail-loud guard, SECURITY DEFINER | [`RawSqlBoundaryTest`](RawSqlBoundaryTest.php) | ✅ written (core) |
-| 4 | Policy correctness & compounding | [`PolicyCompoundingTest`](PolicyCompoundingTest.php) | 🚧 stub |
+| 4 | Policy correctness & compounding | [`PolicyCompoundingTest`](PolicyCompoundingTest.php) | ✅ written |
 | 5 | Role / privilege matrix | [`PrivilegeMatrixTest`](PrivilegeMatrixTest.php) | 🚧 stub |
 | 6 | Value / type edge cases fail closed | [`MaliciousValueTest`](MaliciousValueTest.php) | ✅ written |
 | 7 | Migration / DDL hazards | [`MigrationDdlTest`](MigrationDdlTest.php) | 🚧 stub |

@@ -62,6 +62,11 @@ class RlsSchemaMacros
                     $raw(sprintf('alter table "%s" force row level security', $table));
                 }
 
+                // One permissive base policy per table — it is what the restrictive isolation
+                // policies AND against. A compound table calls isolatedBy() once per key, all
+                // sharing this name, so drop-then-create keeps it idempotent instead of colliding
+                // on the second key.
+                $raw(sprintf('drop policy if exists "%s_access" on "%s"', $table, $table));
                 $raw(sprintf(
                     'create policy "%s_access" on "%s" as permissive for all using (true) with check (true)',
                     $table,

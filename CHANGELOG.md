@@ -7,6 +7,13 @@ reaches `1.0.0`. While on `0.x`, minor versions may contain breaking changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Compound isolation keys now work: a table with two or more `isolatedBy()` calls
+  no longer fails to migrate on a duplicate `"<table>_access"` permissive policy.
+  The shared base policy is created idempotently (one per table). This is the
+  compound-key usage the README documents; it was previously unreachable.
+
 ## [0.0.1]
 
 First public, pre-release cut. The mechanism works end to end against real
