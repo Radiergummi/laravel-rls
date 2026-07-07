@@ -26,7 +26,7 @@ switch their base to `SecurityTestCase` when implementing.
 | 4 | Policy correctness & compounding | [`PolicyCompoundingTest`](PolicyCompoundingTest.php) | ✅ written |
 | 5 | Role / privilege matrix | [`PrivilegeMatrixTest`](PrivilegeMatrixTest.php) | 🚧 stub |
 | 6 | Value / type edge cases fail closed | [`MaliciousValueTest`](MaliciousValueTest.php) | ✅ written |
-| 7 | Migration / DDL hazards | [`MigrationDdlTest`](MigrationDdlTest.php) | 🚧 stub |
+| 7 | Migration / DDL hazards | [`MigrationDdlTest`](MigrationDdlTest.php) | ✅ written |
 | 8 | Covert channels | [`CovertChannelTest`](CovertChannelTest.php) | 🚧 stub |
 
 `RawSqlBoundaryTest` covers raw `DB::select`/`update`/`delete` confinement, the
