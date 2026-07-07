@@ -28,7 +28,7 @@ tests**; the security work adds more on top (see below).
 | Milestone | State | What's done / what's left |
 |---|---|---|
 | **A — Performance harness** | ✅ **done** | `composer bench`, committed `bench/baseline.json`, per-query + endpoint + latency-sweep cells, `EXPLAIN` evidence, and a README Performance section. |
-| **B — Adversarial security suite** | 🚧 **in progress** | `tests/Security/` scaffolded. All 8 categories have coverage: bypass abuse (cat 2), malicious values (cat 6 + injection value of 3), context-stack integrity + pooling-safety core (cat 1), raw-SQL boundary core (cat 3), policy compounding (cat 4 — found + fixed the compound-key macro bug), migration/DDL hazards (cat 7), role/privilege matrix (cat 5), covert channels (cat 8 — deterministic channels tested, timing documented). Left: the live-infra cat-1 cases (PgBouncer interleave / two-job queue / Octane) and the views/CTE/COPY tail of cat 3, marked incomplete. See [`tests/Security/README.md`](../tests/Security/README.md). |
+| **B — Adversarial security suite** | ✅ **done** (2 known-limits documented) | All 8 threat categories have adversarial coverage in `tests/Security/` (queue A→B in `QueuedJobContextTest`): bypass abuse (2), malicious values (6 + injection value of 3), context-stack + pooling-safety + PgBouncer row-level + Octane-listener + queue (1), raw-SQL/SECURITY DEFINER/CTE/view/TRUNCATE (3), policy compounding (4), migration/DDL (7), role/privilege matrix (5), covert channels (8). **Found + fixed two real bugs:** the compound-key macro (4) and RLS context not reaching daemon/Octane workers (1). Documented known-limits (not exhaustively tested): `COPY`/triggers (3) and timing side channels (8). The PgBouncer/queue end-to-end cases skip in CI until Milestone C wires that infra. See [`tests/Security/README.md`](../tests/Security/README.md). |
 | **C — Version-matrix CI** | 🟡 **partial** | Minimal CI is green (`.github/workflows/ci.yml`: PHP 8.2–8.4 × Postgres 18, PHPStan, Pint). Left: the full PG × PHP × Laravel matrix, `prefer-lowest`, the PgBouncer job, and the perf-regression job. |
 
 ---
@@ -116,15 +116,14 @@ table, no scoping at all) to attribute the cost between "RLS predicate" and
 
 ## Milestone B — Adversarial security & edge-case suite
 
-> **Status: 🚧 in progress.** All eight threat categories now have adversarial
-> coverage: 2, 4, 5, 6, 7, 8, the stack-integrity subset of 1, the raw-SQL core of
-> 3, and the pooling-safety core of 1 (transaction-local context cannot outlive
-> its transaction) are written and green. What remains is the part that needs live
-> infrastructure in the path — PgBouncer interleaving, a two-job queue worker, and
-> Octane (cat 1), plus the views / CTE / COPY / TRUNCATE / trigger tail of cat 3 —
-> each marked incomplete with a pointer to the feature test that exercises the
-> happy path. Per-category status lives in
-> [`tests/Security/README.md`](../tests/Security/README.md).
+> **Status: ✅ done, with two documented known-limits.** All eight threat
+> categories have adversarial coverage and it found + fixed two real bugs (the
+> compound-key `isolatedBy()` macro, and RLS context failing to reach daemon/Octane
+> workers). The PgBouncer and queue end-to-end cases run locally and skip in CI
+> until Milestone C wires that infra; the Octane request-boundary is asserted via
+> its canary listener (no runtime here). Deliberately characterized-not-tested:
+> `COPY` and triggers (cat 3) and timing side channels (cat 8). Per-category status
+> lives in [`tests/Security/README.md`](../tests/Security/README.md).
 
 **Goal:** a *large* suite that actively tries to break isolation across every edge
 case and compounding condition, turning "we believe it holds" into "we tried to

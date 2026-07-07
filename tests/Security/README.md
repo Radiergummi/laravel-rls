@@ -25,7 +25,7 @@ that exercises the happy path.
 | # | Category | File | Status |
 |---|----------|------|--------|
 | 1 | Context leakage — stack integrity (exceptions, nesting, bypass) | [`ContextStackIntegrityTest`](ContextStackIntegrityTest.php) | ✅ written |
-| 1 | Context leakage — pooling / queue / Octane | [`CrossWorkerLeakageTest`](CrossWorkerLeakageTest.php) | ✅ core written; live-infra cases marked |
+| 1 | Context leakage — pooling / queue / Octane | [`CrossWorkerLeakageTest`](CrossWorkerLeakageTest.php) + [`QueuedJobContextTest`](../Feature/QueuedJobContextTest.php) | ✅ written (queue found+fixed a daemon bug) |
 | 2 | Bypass abuse — forged GUC inert, flag exception-safety, fail-closed | [`BypassAbuseTest`](BypassAbuseTest.php) | ✅ written |
 | 3 | SQL injection — malicious *values* stay bound params | [`MaliciousValueTest`](MaliciousValueTest.php) | ✅ written (value angle) |
 | 3 | Raw-SQL boundary — raw reads/writes, fail-loud guard, SECURITY DEFINER | [`RawSqlBoundaryTest`](RawSqlBoundaryTest.php) | ✅ written (core) |
@@ -36,9 +36,10 @@ that exercises the happy path.
 | 8 | Covert channels | [`CovertChannelTest`](CovertChannelTest.php) | ✅ written (deterministic; timing documented) |
 
 `RawSqlBoundaryTest` covers raw `DB::select`/`update`/`delete` confinement, the
-fail-loud guard's quoted-vs-unquoted boundary, and the `SECURITY DEFINER` bypass.
-Still open for category 3: views (`security_invoker`), CTEs, `COPY`, `TRUNCATE`,
-and triggers.
+fail-loud guard's quoted-vs-unquoted boundary, the `SECURITY DEFINER` bypass, CTEs,
+views, and `TRUNCATE` (a known limit — table-level, not row-filtered).
+Characterized-not-tested (documented known-limits): `COPY` (awkward to capture
+through PDO) and triggers.
 
 ## Done when (from the milestone)
 

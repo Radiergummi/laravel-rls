@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Radiergummi\LaravelRls\Tests\Security;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Laravel\Octane\Events\RequestReceived;
 use Orchestra\Testbench\TestCase;
+use PDO;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
 use Radiergummi\LaravelRls\Facades\Rls;
@@ -13,18 +16,19 @@ use Radiergummi\LaravelRls\RlsServiceProvider;
 use Radiergummi\LaravelRls\Tests\CommittedRlsFixtures;
 use Radiergummi\LaravelRls\Tests\WithTestingUtils;
 use RuntimeException;
+use Throwable;
 
 /**
  * Threat category 1 — context leaking across a boundary. Context from one unit
  * of work must never reach the next on the same (pooled or long-lived)
  * connection.
  *
- * The deterministic core is here: under the transaction strategy the scope is a
- * transaction-local GUC, so it cannot outlive its transaction — the property that
- * makes the default safe behind a transaction pooler. The remaining cases need
- * live infrastructure in the path (a real PgBouncer, a queue worker, an Octane
- * worker); they are marked incomplete and cross-referenced to the feature tests
- * that already exercise the happy path.
+ * Covered here: the deterministic core (transaction-local scope cannot outlive
+ * its transaction — the property that makes the default safe behind a transaction
+ * pooler), a row-level check through a real PgBouncer (gated on :6432), and that
+ * the Octane request-boundary canary listener is registered. The queue A→B case
+ * lives in QueuedJobContextTest (a live `queue:work` daemon: context reaches a
+ * job, and one job does not inherit the previous job's context).
  *
  * No RefreshDatabase — these tests reason about real transaction boundaries, not
  * savepoints inside a wrapping test transaction.
@@ -79,34 +83,37 @@ class CrossWorkerLeakageTest extends TestCase
     }
 
     #[Test]
-    #[TestDox('Interleaved transactions through a real PgBouncer never share context')]
+    #[TestDox('Row isolation holds through a real PgBouncer, and no context fails closed')]
     public function pooled_transactions_do_not_share_context(): void
     {
-        $this->markTestIncomplete(
-            'Needs a live PgBouncer in the path (see PgBouncerTest, gated on :6432). The deterministic '
-            . 'guarantee it relies on — transaction-local GUCs dying with their transaction — is covered above.',
+        try {
+            DB::connection('pgsql_bouncer')->getPdo();
+        } catch (Throwable $exception) {
+            $this->markTestSkipped("PgBouncer not reachable on 127.0.0.1:6432: {$exception->getMessage()}");
+        }
+
+        // Each scoped read is its own pooled transaction: the acting tenant sees
+        // only its rows through the pooler...
+        $scoped = Rls::isolateTo(
+            ['tenant_id' => $this->a],
+            fn() => DB::connection('pgsql_bouncer')->table('widgets')->count(),
         );
+        $this->assertSame(2, $scoped);
+
+        // ...and a context-less read on a shared pooled connection sees none.
+        $this->assertSame(0, DB::connection('pgsql_bouncer')->table('widgets')->count());
     }
 
     #[Test]
-    #[TestDox('A queued job cannot see the context of a previous job on the same worker')]
-    public function job_does_not_inherit_previous_job_context(): void
+    #[TestDox('The Octane request boundary has a leak-canary listener registered')]
+    public function octane_request_boundary_has_a_canary_listener(): void
     {
-        $this->markTestIncomplete(
-            'Needs a live queue worker running two jobs in sequence (see QueuedJobContextTest for the '
-            . 'propagation path and LeakCanaryTest for the boundary canary). Also: failed-job retry, '
-            . 'batched/chained jobs, daemon vs --once.',
-        );
-    }
-
-    #[Test]
-    #[TestDox('An Octane request N cannot see request N+1 context')]
-    public function octane_request_does_not_leak_context(): void
-    {
-        $this->markTestIncomplete(
-            'Needs an Octane worker in the path; the leak canary fires at the request boundary '
-            . '(see LeakCanaryTest). No Octane harness is wired into the suite yet.',
-        );
+        // No Octane runtime here (swoole/FrankenPHP/RoadRunner), so request N / N+1
+        // cannot be driven end to end. The canary that clears context at that
+        // boundary is wired on Octane's RequestReceived; assert it is registered.
+        // Its clearing behavior is covered by LeakCanaryTest, and the underlying
+        // scoped-repository fix by QueuedJobContextTest's daemon test.
+        $this->assertTrue(Event::hasListeners(RequestReceived::class));
     }
 
     protected function getPackageProviders($app): array
@@ -119,6 +126,15 @@ class CrossWorkerLeakageTest extends TestCase
         config(['database.default' => 'pgsql']);
         config(['database.connections.pgsql' => $this->rlsConnection('rls_app')]);
         config(['database.connections.pgsql_admin' => $this->rlsConnection('rls_bypass')]);
+        // Same rls_app role, but through PgBouncer (transaction pooling): a
+        // different port, no SSL, and client-side prepares (the pooler cannot
+        // carry server-side prepared statements across the pool).
+        config(['database.connections.pgsql_bouncer' => [
+            ...$this->rlsConnection('rls_app'),
+            'port' => 6432,
+            'sslmode' => 'disable',
+            'options' => [PDO::ATTR_EMULATE_PREPARES => true],
+        ]]);
         config(['rls.role_model' => 'owner']);
         config(['rls.admin_connection' => 'pgsql_admin']);
     }
