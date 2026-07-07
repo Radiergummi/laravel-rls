@@ -297,8 +297,11 @@ connection (see §7).
 
 - **Volatility: `STABLE`** (critical). `STABLE` lets the planner evaluate the helper once per statement and drive an
   **index scan** on `tenant_id`. VOLATILE makes the policy predicate non-sargable → sequential scans on every query.
-- **`PARALLEL SAFE` vs `RESTRICTED`:** to be confirmed empirically (custom GUCs *are* propagated to parallel workers;
-  verify on partitioned tables).
+- **`PARALLEL SAFE` (confirmed 2026-07-07).** `rls.context()` is declared `PARALLEL SAFE`. Postgres computes a query's
+  parallel-safety from the RLS policy's *declared* function, so leaving it at the `CREATE FUNCTION` default (`PARALLEL
+  UNSAFE`) silently forced a **serial plan on every isolated table**. Verified against real PG 18: a forced-parallel scan
+  of an isolated table now produces a Parallel Seq Scan *and* stays correctly scoped (parallel workers inherit the custom
+  `app.*` GUCs via the parallel DSM). See `ParallelSafetyTest`.
 - **Security context:** context readers are `SECURITY INVOKER` (plain GUC reads).
   `SECURITY DEFINER` is reserved for the advanced auth-lookup case (§9), locked down with `SET search_path = ''` and
   schema-qualified bodies.
@@ -641,7 +644,9 @@ rls.context('tenant_id')     rls.tenant_id()
    argument for `explicit`. Validate the DX of both on a real app before locking.
 2. **Fail-loud granularity for raw SQL.** Per-table detection is clean for the query builder, fuzzy for raw SQL. Decide
    the raw-SQL fallback after the PoC.
-3. **`PARALLEL SAFE` vs `RESTRICTED`** for `rls.*` — confirm empirically on partitioned/parallel scans.
+3. ~~**`PARALLEL SAFE` vs `RESTRICTED`** for `rls.*` — confirm empirically on partitioned/parallel scans.~~
+   **Resolved 2026-07-07:** `rls.context()` is `PARALLEL SAFE` (`ParallelSafetyTest`). The default `PARALLEL UNSAFE`
+   had been forcing serial plans on every isolated table.
 4. **Blueprint macro inheritance** with tpetry's schema subclass — verify.
 5. **Read-replica context propagation** — confirm the injection path on replica connections.
 

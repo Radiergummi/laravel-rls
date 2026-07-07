@@ -7,6 +7,15 @@ reaches `1.0.0`. While on `0.x`, minor versions may contain breaking changes.
 
 ## [Unreleased]
 
+### Changed
+
+- **`rls.context()` is now declared `PARALLEL SAFE`.** PostgreSQL derives a
+  query's parallel-safety from the RLS policy's declared function, so the
+  `CREATE FUNCTION` default (`PARALLEL UNSAFE`) was silently forcing a serial
+  plan on every isolated table. Isolated tables can now use parallel query plans;
+  results stay correctly scoped because parallel workers inherit the `app.*`
+  GUCs. Re-run the `rls:sync`/functions migration to pick up the change.
+
 ### Fixed
 
 - **Context now reaches jobs on long-lived (daemon) queue workers and Octane, not

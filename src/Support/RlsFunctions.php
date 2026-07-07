@@ -28,6 +28,7 @@ class RlsFunctions
                 returns text
                 language sql
                 stable
+                parallel safe
                 as $$
                     select nullif(current_setting('app.' || key, true), '')
                 $$

@@ -147,9 +147,13 @@ and *where* it touches the code.
   empty?" debugger), `dumpRlsPolicies`, `#[RlsContext]` / `#[WithoutRls]`
   attributes, Pest helpers. *Design §13.*
 
-- [ ] **`STABLE` volatility + `PARALLEL SAFE` confirmation.** Helpers are declared
-  `STABLE` (index-scan-able). Confirm `PARALLEL SAFE` vs `RESTRICTED` empirically
-  on partitioned/parallel scans. *Design §8/§21.*
+- [x] **`STABLE` volatility + `PARALLEL SAFE` confirmation.** Helpers are declared
+  `STABLE` (index-scan-able). `rls.context()` is now also `PARALLEL SAFE` —
+  Postgres derives a query's parallel-safety from the RLS policy's *declared*
+  function, so the `CREATE FUNCTION` default (`PARALLEL UNSAFE`) was silently
+  forcing a serial plan on every isolated table. Confirmed against real PG 18 in
+  `ParallelSafetyTest`: a forced-parallel scan parallelizes and stays correctly
+  scoped. *Design §8/§21.*
 
 - [ ] **Nested-transaction tenant-change guard** (`NestedTenantContext` — throw
   when the tenant dimension changes inside an open transaction). *Design §4.*
