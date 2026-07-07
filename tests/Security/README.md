@@ -8,11 +8,17 @@ full threat model and "done when" criteria.
 **Guiding rule:** where a real leak exists, it is characterized and documented as
 a known-limit, **not** hidden or papered over by weakening the test.
 
-All fully-written cases extend [`SecurityTestCase`](SecurityTestCase.php), which
-reuses the owner-mode `documents` fixture (isolatedBy `tenant_id`, FORCE on) and
-wires the BYPASSRLS admin connection. Stub cases extend PHPUnit's `TestCase` and
-call `markTestIncomplete()` so `--testdox` prints them as a live checklist;
-switch their base to `SecurityTestCase` when implementing.
+Most cases extend [`SecurityTestCase`](SecurityTestCase.php), which reuses the
+owner-mode `documents` fixture (isolatedBy `tenant_id`, FORCE on) and wires the
+BYPASSRLS admin connection. Cases that need committed data readable across
+several role connections (`PrivilegeMatrixTest`, `CrossWorkerLeakageTest`) extend
+Orchestra's `TestCase` directly instead — `RefreshDatabase` wraps each test in a
+single transaction, which those cases specifically need to avoid.
+
+Cases that still need live infrastructure (a real PgBouncer, a queue worker,
+Octane) are `markTestIncomplete()` methods inside their category's class, so
+`--testdox` prints them as a live checklist cross-referenced to the feature test
+that exercises the happy path.
 
 ## Threat categories → coverage
 
