@@ -7,7 +7,8 @@ Everything needed to pick this project back up. Read this first.
 `radiergummi/laravel-rls` — a Laravel package making PostgreSQL Row-Level
 Security a transparent tenant-isolation layer. The design was brainstormed in
 full, an implementation plan written, and a **proof of concept built covering
-the entire design surface** (97 tests, all green against real Postgres 18).
+the entire design surface** (122 tests, all green against real Postgres 18),
+plus the Milestone A performance harness.
 
 Goal of the PoC was to answer *"does this actually work across the hard cases —
 connection pooling, jobs, restricted roles, other connection packages?"* — and
@@ -25,13 +26,17 @@ the answer is **yes**, with specific gotchas now captured in code and tests.
 
 ## Current state
 
-- **Branch:** `main` (pushed to origin; one self-contained commit per feature).
-- **Tests:** `vendor/bin/phpunit` → 97 tests / 182 assertions, all passing.
-- **P0 hardening complete** and **most of P1 done.** P0: leak canary, context
-  value validation, resolver-collision guard, session reset/reconnect,
+- **Branch:** `main` (one self-contained commit per feature).
+- **Tests:** `vendor/bin/phpunit` → 122 tests / 414 assertions, all passing.
+- **P0 hardening complete**, **most of P1 done**, and **Milestone A (performance
+  harness) landed** — `composer bench`, checked-in `bench/baseline.json`,
+  endpoint + latency-sweep cells, README Performance section. P0: leak canary,
+  context value validation, resolver-collision guard, session reset/reconnect,
   read-replica context, real-PgBouncer test. P1: `withDefault()`, bypass
   hardening tests, bypass observability (event/log/`rls:audit --threshold`),
   `rls:install`, `rls:sync`, tenancy docs recipe.
+- **CI:** `.github/workflows/ci.yml` runs tests (PHP 8.2–8.4 × Postgres 18),
+  PHPStan, and Pint. The full version matrix + PgBouncer job is Milestone C.
 - **Remaining (see [`docs/BACKLOG.md`](BACKLOG.md)), all decision-gated or larger:**
   `rls:upgrade` (needs a versioning scheme), `--extension`/PGXN path, per-table
   fail-loud for raw SQL (open policy question), and the P2 polish items.
