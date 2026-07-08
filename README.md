@@ -7,6 +7,7 @@ Enable isolation on a table in a migration, tell the package how to derive the c
 a region, or any dimension you choose), and PostgreSQL confines every read and write to that scope. A forgotten
 `where tenant_id = ?` can no longer leak data, because the filter lives in the database, not in your query builder.
 
+> [!IMPORTANT]
 > **Status.** This is a proof of concept: Right now the mechanism works end to end against real PostgreSQL, and is
 > covered by tests, including transaction pooling (PgBouncer), a live `queue:work` cycle, read replicas, and two
 > distinct database roles.  
